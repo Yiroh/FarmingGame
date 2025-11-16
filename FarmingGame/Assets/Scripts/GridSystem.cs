@@ -29,6 +29,7 @@ public class GridSystem : MonoBehaviour
     private void Awake()
     {
         LoadGrid();
+        Debug.Log(Application.persistentDataPath);
     }
 
     private void Update()
