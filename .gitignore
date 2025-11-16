@@ -72,9 +72,6 @@ Desktop.ini
 # Shader cache
 *.cginc
 
-# Exclude meta files for assets that aren't needed
-*.meta
-
 # Exclude large cache files
 *.cache
 
