@@ -3,42 +3,35 @@ using UnityEngine.InputSystem;
 
 public class PlayerController : MonoBehaviour
 {
+    public static PlayerController Instance;
+
+    private void Awake()
+    {
+        // Singleton
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+    }
+
     [Header("Movement")]
     public float moveSpeed = 5f;
 
-    [Header("Interaction")]
-    public Transform interactionBox;      // Assign a child cube here
-    public float interactionDistance = 1f;
-    public Vector3 interactionBoxSize = new Vector3(1f, 1f, 1f);
-    public LayerMask interactionLayers;   // Optional: layers to interact with
-
-    private void Start()
-    {
-        if (interactionBox != null)
-        {
-            interactionBox.localPosition = new Vector3(0f, 0f, interactionDistance);
-            interactionBox.localScale = interactionBoxSize;
-
-            var renderer = interactionBox.GetComponent<MeshRenderer>();
-            if (renderer != null)
-            {
-                // translucent blue
-                Color c = new Color(0f, 0.5f, 1f, 0.25f);
-                renderer.material.color = c;
-            }
-        }
-        else
-        {
-            Debug.LogWarning("PlayerController: No interactionBox assigned in the inspector.");
-        }
-    }
+    [Header("Grid Interaction")]
+    public GridSystem gridSystem;
+    public GridAction currentAction = GridAction.Place;
 
     private void Update()
     {
         HandleMovement();
-        HandleInteractionBoxPosition();
         HandleInteractionInput();
+        HandleActionSwitching();
+        HandleMouseInteraction();
     }
+
+    #region Movement
 
     private void HandleMovement()
     {
@@ -62,44 +55,41 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    private void HandleInteractionBoxPosition()
-    {
-        if (interactionBox == null) return;
+    #endregion
 
-        interactionBox.position = transform.position + transform.forward * interactionDistance;
-        interactionBox.localScale = interactionBoxSize;
-    }
+    #region Keyboard Interaction
 
     private void HandleInteractionInput()
     {
-        if (Keyboard.current == null) return;
-
-        // Space bar using new Input System
+        // Space bar triggers interaction at highlighted cell
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            Debug.Log("Interaction pressed!");
-
-            if (interactionBox != null)
-            {
-                Vector3 center = interactionBox.position;
-                Vector3 halfExtents = interactionBoxSize * 0.5f;
-
-                Collider[] hits = Physics.OverlapBox(center, halfExtents, Quaternion.identity, interactionLayers);
-
-                foreach (var hit in hits)
-                {
-                    Debug.Log("Hit interactable: " + hit.name);
-                    // Later: hit.GetComponent<IInteractable>()?.Interact();
-                }
-            }
+            gridSystem.TryInteractWithHighlighted(currentAction);
         }
     }
 
-    private void OnDrawGizmosSelected()
+    private void HandleActionSwitching()
     {
-        if (interactionBox == null) return;
-
-        Gizmos.color = new Color(0f, 0.5f, 1f, 0.35f);
-        Gizmos.DrawCube(interactionBox.position, interactionBoxSize);
+        if (Keyboard.current.digit1Key.wasPressedThisFrame) currentAction = GridAction.Place;
+        if (Keyboard.current.digit2Key.wasPressedThisFrame) currentAction = GridAction.Delete;
+        if (Keyboard.current.digit3Key.wasPressedThisFrame) currentAction = GridAction.Select;
+        if (Keyboard.current.digit4Key.wasPressedThisFrame) currentAction = GridAction.Harvest;
     }
+
+    #endregion
+
+    #region Mouse Interaction
+
+    private void HandleMouseInteraction()
+    {
+        if (Mouse.current == null) return;
+
+        // Left mouse click interacts at the highlighted cell
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            gridSystem.TryInteractWithHighlighted(currentAction);
+        }
+    }
+
+    #endregion
 }
