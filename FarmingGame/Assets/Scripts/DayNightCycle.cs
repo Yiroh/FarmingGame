@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;   // <-- IMPORTANT for TextMeshPro
 
 public class DayNightCycle : MonoBehaviour
 {
@@ -7,8 +8,11 @@ public class DayNightCycle : MonoBehaviour
     public float dayLengthInMinutes = 10f;
 
     [Range(0f, 1f)]
-    [Tooltip("Current time of day (0 = sunrise, 0.5 = sunset, 1 = next sunrise).")]
+    [Tooltip("Current time of day (0 = start of day, 1 = next day).")]
     public float timeOfDay = 0f;
+
+    [Tooltip("World hour when timeOfDay = 0 (e.g. 6 = 06:00).")]
+    public float startHour = 6f;   // 06:00 at timeOfDay = 0
 
     [Header("Sun Settings")]
     public Light sun;
@@ -16,19 +20,19 @@ public class DayNightCycle : MonoBehaviour
     public Gradient sunColorOverDay;
     public AnimationCurve sunIntensityOverDay;
 
+    [Header("UI (TextMeshPro)")]
+    public TextMeshProUGUI clockText;   // TMP text for clock
+    public TextMeshProUGUI phaseText;   // TMP text for phase
+
     private float dayLengthInSeconds;
+
+    public enum DayPhase { Night, Dawn, Day, Dusk }
+    public DayPhase CurrentPhase { get; private set; }
 
     void Start()
     {
         dayLengthInSeconds = dayLengthInMinutes * 60f;
 
-        // If no gradient is set in the inspector, create a simple fallback
-        if (sunColorOverDay == null)
-        {
-            sunColorOverDay = new Gradient();
-        }
-
-        // If no curve is set, make a simple "on during the day, off at night" curve
         if (sunIntensityOverDay == null || sunIntensityOverDay.keys.Length == 0)
         {
             sunIntensityOverDay = new AnimationCurve(
@@ -46,27 +50,63 @@ public class DayNightCycle : MonoBehaviour
         if (dayLengthInSeconds <= 0f || sun == null)
             return;
 
-        // Advance timeOfDay 0 → 1
+        // --- TIME PROGRESSION ---
         timeOfDay += Time.deltaTime / dayLengthInSeconds;
         if (timeOfDay > 1f)
             timeOfDay -= 1f;
 
-        // 1) Rotate the sun around the scene
-        // 0 = sunrise horizon, 0.5 = sunset horizon, etc.
-        float sunAngle = timeOfDay * 360f - 90f; // -90 so 0 starts at horizon
+        // --- SUN ROTATION & LIGHTING ---
+        float sunAngle = timeOfDay * 360f - 90f;  // 0 at horizon
         sun.transform.rotation = Quaternion.Euler(sunAngle, 170f, 0f);
 
-        // 2) Set sun color from gradient
         if (sunColorOverDay != null)
         {
             sun.color = sunColorOverDay.Evaluate(timeOfDay);
         }
 
-        // 3) Set sun intensity from curve
         float intensityMultiplier = sunIntensityOverDay.Evaluate(timeOfDay);
         sun.intensity = sunBaseIntensity * intensityMultiplier;
 
-        // 4) Optional: match ambient light a bit
         RenderSettings.ambientLight = sun.color * 0.3f;
+
+        // --- UI & PHASE ---
+        UpdatePhaseAndClockUI();
+    }
+
+    void UpdatePhaseAndClockUI()
+    {
+        // Convert 0–1 timeOfDay into 24h clock
+        float currentHour = Mathf.Repeat(startHour + timeOfDay * 24f, 24f);
+        int hour = Mathf.FloorToInt(currentHour);
+        int minute = Mathf.FloorToInt((currentHour - hour) * 60f);
+
+        // Military time (HH:MM)
+        if (clockText != null)
+        {
+            clockText.text = $"{hour:00}:{minute:00}";
+        }
+
+        // Calculate phase from currentHour
+        CurrentPhase = GetPhase(currentHour);
+
+        if (phaseText != null)
+        {
+            phaseText.text = CurrentPhase.ToString();  // "Dawn", "Day", etc.
+        }
+    }
+
+    DayPhase GetPhase(float hour)
+    {
+        // 24h ranges – tweak however you like
+        if (hour >= 5f && hour < 8f)
+            return DayPhase.Dawn;
+
+        if (hour >= 8f && hour < 18f)
+            return DayPhase.Day;
+
+        if (hour >= 18f && hour < 21f)
+            return DayPhase.Dusk;
+
+        return DayPhase.Night;
     }
 }
