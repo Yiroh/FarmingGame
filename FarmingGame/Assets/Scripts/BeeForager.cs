@@ -6,6 +6,9 @@ public class BeeForager : MonoBehaviour
     public enum BeeState { Idle, FlyingToFlower, Pollinating, Returning }
     public BeeState state = BeeState.Idle;
 
+    // Personality type for this bee – set per prefab
+    public enum BeePersonality { Calm, Energetic, Sleepy, Diligent }
+
     [Header("References")]
     public Beehive homeHive;
     public Transform flowerTarget;
@@ -20,31 +23,43 @@ public class BeeForager : MonoBehaviour
     [Header("Pollination Settings")]
     public float pollinationDuration = 3f;
 
-    private Vector3 homePosition;
+    [Header("Personality (set on prefab)")]
+    public BeePersonality personality = BeePersonality.Calm;
 
-    
+    [Tooltip("Multiplier applied to flightSpeed based on this bee type.")]
+    public float flightSpeedMultiplier = 1f;
+
+    [Tooltip("Multiplier applied to pollinationDuration based on this bee type.")]
+    public float pollinationDurationMultiplier = 1f;
+
+    [Tooltip("Multiplier applied to pollen reward based on this bee type.")]
+    public float pollenYieldMultiplier = 1f;
+
+    private Vector3 homePosition;
 
     private void Start()
     {
         if (homeHive != null)
             homePosition = homeHive.transform.position;
+
+        // No random personality here – everything comes from the prefab.
+        // You can still add logic later if you want.
     }
 
     // Called by the hive
     public void SetFlower(Transform flower)
+    {
+        flowerTarget = flower;
+
+        // Cache the Flower component & reserve a slot
+        targetFlower = flower != null ? flower.GetComponent<Flower>() : null;
+        if (targetFlower != null)
         {
-            flowerTarget = flower;
-
-            // Cache the Flower component & reserve a slot
-            targetFlower = flower != null ? flower.GetComponent<Flower>() : null;
-            if (targetFlower != null)
-            {
-                targetFlower.RegisterBee();
-            }
-
-            FlyToFlower();
+            targetFlower.RegisterBee();
         }
 
+        FlyToFlower();
+    }
 
     public void FlyToFlower()
     {
@@ -70,10 +85,11 @@ public class BeeForager : MonoBehaviour
         {
             Vector3 dir = (destination - transform.position).normalized;
 
-            // --- FIX: Move directly toward destination, NOT forward ---
-            transform.position += dir * flightSpeed * Time.deltaTime;
+            // Use personality-adjusted speed
+            float currentSpeed = flightSpeed * flightSpeedMultiplier;
+            transform.position += dir * currentSpeed * Time.deltaTime;
 
-            // --- Smooth rotation toward movement direction ---
+            // Smooth rotation toward movement direction
             if (dir != Vector3.zero)
             {
                 Quaternion targetRot = Quaternion.LookRotation(dir);
@@ -107,12 +123,15 @@ public class BeeForager : MonoBehaviour
         }
     }
 
-   private IEnumerator PollinateRoutine()
+    private IEnumerator PollinateRoutine()
     {
         float timer = 0f;
         Vector3 basePos = transform.position;
 
-        while (timer < pollinationDuration)
+        // Personality-adjusted pollination time
+        float duration = pollinationDuration * pollinationDurationMultiplier;
+
+        while (timer < duration)
         {
             timer += Time.deltaTime;
             transform.position = basePos + Vector3.up *
@@ -120,8 +139,9 @@ public class BeeForager : MonoBehaviour
             yield return null;
         }
 
-        // Reward hive
-        homeHive.storedPollen += Random.Range(0.1f, 0.3f);
+        // Reward hive with personality-adjusted pollen
+        float baseReward = Random.Range(0.1f, 0.3f);
+        homeHive.storedPollen += baseReward * pollenYieldMultiplier;
 
         // We are done with this flower: free up its slot
         if (targetFlower != null)
@@ -132,6 +152,7 @@ public class BeeForager : MonoBehaviour
 
         ReturnToHive();
     }
+
     private void OnDestroy()
     {
         // Safety net: if something destroys the bee unexpectedly,
@@ -142,6 +163,4 @@ public class BeeForager : MonoBehaviour
             targetFlower = null;
         }
     }
-
-
 }
