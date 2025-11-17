@@ -20,6 +20,9 @@ public class GridSystem : MonoBehaviour
     public Material ghostMaterial;
     private GameObject ghostInstance;
 
+    [Header("Placement Constraints")]
+    public float maxPlacementDistance = 5f;
+
     // Dictionary-based unlimited grid
     private Dictionary<Vector2Int, GridCell> grid = new Dictionary<Vector2Int, GridCell>();
 
@@ -112,22 +115,42 @@ public class GridSystem : MonoBehaviour
     private void Place(Vector2Int cell)
     {
         if (grid.ContainsKey(cell) && grid[cell].occupied)
+    {
+        Debug.Log("Cell occupied — cannot place.");
+        return;
+    }
+
+    // --- NEW: distance check from player ---
+    if (PlayerController.Instance != null)
+    {
+        Vector3 targetWorldPos = GridToWorld(cell);
+
+        // Flatten to XZ so height doesn't matter
+        Vector3 playerPos = PlayerController.Instance.transform.position;
+        Vector3 flatPlayer = new Vector3(playerPos.x, 0f, playerPos.z);
+        Vector3 flatTarget = new Vector3(targetWorldPos.x, 0f, targetWorldPos.z);
+
+        float distance = Vector3.Distance(flatPlayer, flatTarget);
+
+        if (distance > maxPlacementDistance)
         {
-            Debug.Log("Cell occupied — cannot place.");
+            Debug.Log("Too far from player to place here.");
             return;
         }
+    }
+    // --------------------------------------
 
-        Vector3 pos = GridToWorld(cell);
-        GameObject obj = Instantiate(placePrefab, pos, Quaternion.identity);
+    Vector3 pos = GridToWorld(cell);
+    GameObject obj = Instantiate(placePrefab, pos, Quaternion.identity);
 
-        if (!grid.ContainsKey(cell))
-            grid[cell] = new GridCell();
+    if (!grid.ContainsKey(cell))
+        grid[cell] = new GridCell();
 
-        grid[cell].occupied = true;
-        grid[cell].objectOnCell = obj;
+    grid[cell].occupied = true;
+    grid[cell].objectOnCell = obj;
 
-        Debug.Log($"Placed object at {cell}");
-        SaveGrid();
+    Debug.Log($"Placed object at {cell}");
+    SaveGrid();
     }
 
     private void Delete(Vector2Int cell)
