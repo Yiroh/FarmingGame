@@ -27,6 +27,11 @@ public class GridSystem : MonoBehaviour
     public Color validColor = new Color(0f, 1f, 0f, 0.5f);
     public Color invalidColor = new Color(1f, 0f, 0f, 0.5f);
 
+    [Header("Rotation")]
+    [Tooltip("How many degrees to rotate each time you press R.")]
+    public float rotationStep = 90f;
+    private float currentRotationY = 0f;
+
     // Dictionary-based unlimited grid
     private Dictionary<Vector2Int, GridCell> grid = new Dictionary<Vector2Int, GridCell>();
 
@@ -41,9 +46,35 @@ public class GridSystem : MonoBehaviour
 
     private void Update()
     {
+        HandleRotationInput();
         UpdateMouseHighlight();
         UpdateGhostPreview();
     }
+
+    #region Rotation
+
+    private void HandleRotationInput()
+    {
+        if (Keyboard.current == null) return;
+        if (PlayerController.Instance == null) return;
+
+        // Only rotate while in Place mode
+        if (PlayerController.Instance.currentAction != GridAction.Place)
+            return;
+
+        if (Keyboard.current.rKey.wasPressedThisFrame)
+        {
+            currentRotationY += rotationStep;
+            currentRotationY %= 360f;
+
+            if (ghostInstance != null)
+            {
+                ghostInstance.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
+            }
+        }
+    }
+
+    #endregion
 
     #region Highlight and Ghost
 
@@ -69,6 +100,9 @@ public class GridSystem : MonoBehaviour
 
     private void UpdateGhostPreview()
     {
+        if (PlayerController.Instance == null)
+            return;
+
         if (PlayerController.Instance.currentAction != GridAction.Place)
         {
             if (ghostInstance != null)
@@ -88,6 +122,7 @@ public class GridSystem : MonoBehaviour
         {
             // Move ghost to highlighted cell
             ghostInstance.transform.position = highlightInstance.transform.position;
+            ghostInstance.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
 
             // Check if we can place here and color accordingly
             Vector2Int cell = WorldToGrid(highlightInstance.transform.position);
@@ -131,9 +166,9 @@ public class GridSystem : MonoBehaviour
 
         switch (action)
         {
-            case GridAction.Place: Place(cell); break;
-            case GridAction.Delete: Delete(cell); break;
-            case GridAction.Select: Select(cell); break;
+            case GridAction.Place:  Place(cell);   break;
+            case GridAction.Delete: Delete(cell);  break;
+            case GridAction.Select: Select(cell);  break;
             case GridAction.Harvest: Harvest(cell); break;
         }
     }
@@ -171,7 +206,8 @@ public class GridSystem : MonoBehaviour
         }
 
         Vector3 pos = GridToWorld(cell);
-        GameObject obj = Instantiate(placePrefab, pos, Quaternion.identity);
+        Quaternion rot = Quaternion.Euler(0f, currentRotationY, 0f);
+        GameObject obj = Instantiate(placePrefab, pos, rot);
 
         if (!grid.ContainsKey(cell))
             grid[cell] = new GridCell();
@@ -257,6 +293,7 @@ public class GridSystem : MonoBehaviour
         public int x;
         public int y;
         public string prefabName;
+        // Note: rotation is not saved yet. You can add it later if needed.
     }
 
     [System.Serializable]
