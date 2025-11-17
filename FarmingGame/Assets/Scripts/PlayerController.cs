@@ -21,7 +21,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("Grid Interaction")]
     public GridSystem gridSystem;
-    public GridAction currentAction = GridAction.Place;
+    public GridAction currentAction = GridAction.None; // Start with no tool selected
 
     private void Update()
     {
@@ -61,8 +61,10 @@ public class PlayerController : MonoBehaviour
 
     private void HandleInteractionInput()
     {
+        if (gridSystem == null || Keyboard.current == null) return;
+
         // Space bar triggers interaction at highlighted cell
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        if (Keyboard.current.spaceKey.wasPressedThisFrame && currentAction != GridAction.None)
         {
             gridSystem.TryInteractWithHighlighted(currentAction);
         }
@@ -70,10 +72,29 @@ public class PlayerController : MonoBehaviour
 
     private void HandleActionSwitching()
     {
+        if (Keyboard.current == null) return;
+
+        // Dev / debug hotkeys for manually choosing tools
         if (Keyboard.current.digit1Key.wasPressedThisFrame) currentAction = GridAction.Place;
         if (Keyboard.current.digit2Key.wasPressedThisFrame) currentAction = GridAction.Delete;
         if (Keyboard.current.digit3Key.wasPressedThisFrame) currentAction = GridAction.Select;
         if (Keyboard.current.digit4Key.wasPressedThisFrame) currentAction = GridAction.Harvest;
+
+        // B = toggle build mode (future: open radial building UI here)
+        if (Keyboard.current.bKey.wasPressedThisFrame)
+        {
+            if (currentAction == GridAction.Place)
+            {
+                currentAction = GridAction.None;   // exit build mode
+            }
+            else
+            {
+                currentAction = GridAction.Place;  // enter build mode with current prefab
+                // In the future: instead of directly switching,
+                // open your circle/radial UI and let the player pick a building,
+                // then call gridSystem.SetPlacePrefab(selectedPrefab);
+            }
+        }
     }
 
     #endregion
@@ -82,10 +103,10 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMouseInteraction()
     {
-        if (Mouse.current == null) return;
+        if (gridSystem == null || Mouse.current == null) return;
 
         // Left mouse click interacts at the highlighted cell
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (Mouse.current.leftButton.wasPressedThisFrame && currentAction != GridAction.None)
         {
             gridSystem.TryInteractWithHighlighted(currentAction);
         }

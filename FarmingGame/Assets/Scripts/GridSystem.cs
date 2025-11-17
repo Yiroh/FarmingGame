@@ -9,6 +9,7 @@ public class GridSystem : MonoBehaviour
     public float cellSize = 1f;
 
     [Header("Interactable Object")]
+    [Tooltip("Currently selected prefab to place. Your building UI can change this via SetPlacePrefab().")]
     public GameObject placePrefab;
     public LayerMask groundMask;
 
@@ -110,6 +111,14 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
+        if (placePrefab == null)
+        {
+            // No selected building
+            if (ghostInstance != null)
+                ghostInstance.SetActive(false);
+            return;
+        }
+
         if (ghostInstance == null)
         {
             ghostInstance = Instantiate(placePrefab);
@@ -160,21 +169,25 @@ public class GridSystem : MonoBehaviour
 
     public void TryInteractWithHighlighted(GridAction action)
     {
+        if (action == GridAction.None) return; // No-op mode
         if (highlightInstance == null) return;
 
         Vector2Int cell = WorldToGrid(highlightInstance.transform.position);
 
         switch (action)
         {
-            case GridAction.Place:  Place(cell);   break;
-            case GridAction.Delete: Delete(cell);  break;
-            case GridAction.Select: Select(cell);  break;
+            case GridAction.Place:   Place(cell);   break;
+            case GridAction.Delete:  Delete(cell);  break;
+            case GridAction.Select:  Select(cell);  break;
             case GridAction.Harvest: Harvest(cell); break;
         }
     }
 
     private bool CanPlaceAtCell(Vector2Int cell)
     {
+        if (placePrefab == null)
+            return false;
+
         // 1) Occupied check
         if (grid.ContainsKey(cell) && grid[cell].occupied)
             return false;
@@ -243,7 +256,17 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
-        Debug.Log($"Selected: {grid[cell].objectOnCell.name}");
+        GameObject obj = grid[cell].objectOnCell;
+        var hive = obj.GetComponent<Beehive>(); // uses your Beehive script :contentReference[oaicite:1]{index=1}
+
+        if (hive != null)
+        {
+            Debug.Log($"Selected hive: {hive.hiveName} | Health: {hive.hiveHealth} | Bees: {hive.TotalBees} | Queen: {hive.hasQueen}");
+        }
+        else
+        {
+            Debug.Log($"Selected: {obj.name}");
+        }
     }
 
     private void Harvest(Vector2Int cell)
@@ -358,11 +381,31 @@ public class GridSystem : MonoBehaviour
 
     private GameObject GetPrefabByName(string name)
     {
-        if (placePrefab.name == name)
+        if (placePrefab != null && placePrefab.name == name)
             return placePrefab;
 
         Debug.LogWarning($"Prefab {name} not found. Using default placePrefab.");
         return placePrefab;
+    }
+
+    #endregion
+
+    #region Building Selection API (for future UI)
+
+    /// <summary>
+    /// Called by your future building/radial UI to change which building is being placed.
+    /// For example: gridSystem.SetPlacePrefab(beehivePrefab);
+    /// </summary>
+    public void SetPlacePrefab(GameObject newPrefab)
+    {
+        placePrefab = newPrefab;
+
+        // Force the ghost to rebuild with the new prefab
+        if (ghostInstance != null)
+        {
+            Destroy(ghostInstance);
+            ghostInstance = null;
+        }
     }
 
     #endregion
@@ -377,6 +420,7 @@ public class GridCell
 
 public enum GridAction
 {
+    None,   // No interaction
     Place,
     Delete,
     Select,
