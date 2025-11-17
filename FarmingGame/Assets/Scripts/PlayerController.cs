@@ -90,9 +90,11 @@ public class PlayerController : MonoBehaviour
             else
             {
                 currentAction = GridAction.Place;  // enter build mode with current prefab
-                // In the future: instead of directly switching,
-                // open your circle/radial UI and let the player pick a building,
-                // then call gridSystem.SetPlacePrefab(selectedPrefab);
+
+                // Later:
+                // - Show your circular / radial building UI
+                // - Let player choose a building type
+                // - Call gridSystem.SetPlacePrefab(selectedPrefab);
             }
         }
     }
