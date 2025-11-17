@@ -17,7 +17,8 @@ public class FlowerManager : MonoBehaviour
         if (allFlowers.Count == 0) return null;
         return allFlowers[Random.Range(0, allFlowers.Count)];
     }
-    public Flower GetClosestFlower(Vector3 fromPosition)
+    
+   public Flower GetClosestFlower(Vector3 fromPosition)
     {
         if (allFlowers.Count == 0) return null;
 
@@ -28,6 +29,10 @@ public class FlowerManager : MonoBehaviour
         {
             if (flower == null) continue;
 
+            // ONLY consider flowers that still have free slots
+            if (!flower.HasFreeSlot)
+                continue;
+
             float sqrDist = (flower.transform.position - fromPosition).sqrMagnitude;
             if (sqrDist < closestSqrDist)
             {
@@ -36,7 +41,10 @@ public class FlowerManager : MonoBehaviour
             }
         }
 
+        // If every flower was full, this will be null
         return closest;
     }
+
+
 
 }

@@ -101,20 +101,25 @@ public class Beehive : MonoBehaviour
     private void SpawnBee()
     {
         if (beePrefab == null) return;
+        if (FlowerManager.Instance == null) return;
         if (FlowerManager.Instance.allFlowers.Count == 0) return;
 
-        Vector3 spawnPos = transform.position + Vector3.up * 1.5f; // lift above hive
+        // Find the closest flower that still has a free bee slot
+        Flower closestFlower = FlowerManager.Instance.GetClosestFlower(transform.position);
+        if (closestFlower == null)
+        {
+            // All flowers are full → don't spawn a bee right now
+            return;
+        }
 
+        Vector3 spawnPos = transform.position + Vector3.up * 1.5f; // lift above hive
         GameObject newBee = Instantiate(beePrefab, spawnPos, Quaternion.identity);
 
         BeeForager bee = newBee.GetComponent<BeeForager>();
         bee.homeHive = this;
-
-        Flower closestFlower = FlowerManager.Instance.GetClosestFlower(transform.position);
-        if (closestFlower != null)
-            bee.SetFlower(closestFlower.transform);
-
+        bee.SetFlower(closestFlower.transform);
     }
+
 
     // ---- Example helper methods to use later in gameplay ----
 

@@ -90,3 +90,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Flower
   pollenAmount: 1
+  ageDays: 0
+  maxConcurrentBees: 2
+  currentBees: 0
+  totalBeeVisits: 0

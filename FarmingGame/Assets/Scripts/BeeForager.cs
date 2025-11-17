@@ -9,6 +9,7 @@ public class BeeForager : MonoBehaviour
     [Header("References")]
     public Beehive homeHive;
     public Transform flowerTarget;
+    private Flower targetFlower;
 
     [Header("Movement Settings")]
     public float flightSpeed = 3f;
@@ -21,6 +22,8 @@ public class BeeForager : MonoBehaviour
 
     private Vector3 homePosition;
 
+    
+
     private void Start()
     {
         if (homeHive != null)
@@ -29,10 +32,19 @@ public class BeeForager : MonoBehaviour
 
     // Called by the hive
     public void SetFlower(Transform flower)
-    {
-        flowerTarget = flower;
-        FlyToFlower();
-    }
+        {
+            flowerTarget = flower;
+
+            // Cache the Flower component & reserve a slot
+            targetFlower = flower != null ? flower.GetComponent<Flower>() : null;
+            if (targetFlower != null)
+            {
+                targetFlower.RegisterBee();
+            }
+
+            FlyToFlower();
+        }
+
 
     public void FlyToFlower()
     {
@@ -95,7 +107,7 @@ public class BeeForager : MonoBehaviour
         }
     }
 
-    private IEnumerator PollinateRoutine()
+   private IEnumerator PollinateRoutine()
     {
         float timer = 0f;
         Vector3 basePos = transform.position;
@@ -111,6 +123,25 @@ public class BeeForager : MonoBehaviour
         // Reward hive
         homeHive.storedPollen += Random.Range(0.1f, 0.3f);
 
+        // We are done with this flower: free up its slot
+        if (targetFlower != null)
+        {
+            targetFlower.UnregisterBee();
+            targetFlower = null;
+        }
+
         ReturnToHive();
     }
+    private void OnDestroy()
+    {
+        // Safety net: if something destroys the bee unexpectedly,
+        // make sure we release the slot on the flower.
+        if (targetFlower != null)
+        {
+            targetFlower.UnregisterBee();
+            targetFlower = null;
+        }
+    }
+
+
 }
