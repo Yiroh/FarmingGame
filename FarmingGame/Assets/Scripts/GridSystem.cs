@@ -50,8 +50,13 @@ public class GridSystem : MonoBehaviour
     private void Awake()
     {
         Instance = this;
-        LoadGrid();
+        
         Debug.Log(Application.persistentDataPath);
+    }
+     private void Start()
+    {
+        // Load after all Awakes (including FlowerManager’s) have fired
+        LoadGrid();
     }
 
     private void Update()
