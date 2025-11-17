@@ -29,7 +29,7 @@ public class Beehive : MonoBehaviour
 
     [Header("Population")]
     [Tooltip("Number of worker bees in this hive.")]
-    public int workerBees = 5000;
+    public int workerBees = 4;
 
     [Tooltip("Number of drone bees in this hive.")]
     public int droneBees = 300;
@@ -73,19 +73,51 @@ public class Beehive : MonoBehaviour
     [Tooltip("Local climate suitability (0–100).")]
     [Range(0f, 100f)] public float localClimateSuitability = 70f;
 
+    // ------------------------------------------------------------
+    // Worker bee roster – the "vector" of bees this hive reuses
+    // ------------------------------------------------------------
+
+    [Header("Worker Bee Roster")]
+    [Tooltip("How many individual worker bees this hive tracks for foraging.")]
+    public int visibleWorkerCount = 4;
+
+    [System.Serializable]
+    public struct HiveBee
+    {
+        public string name;         // e.g. Harold, Jenna, Lily, Tyrone
+        public GameObject prefab;   // specific bee prefab (personality + stats)
+    }
+
+    [Tooltip("Per-hive vector of worker bees. Filled at runtime.")]
+    public HiveBee[] workerBeeRoster;
+
+    [Tooltip("Pool of possible bee prefabs (different personalities/stats).")]
+    public GameObject[] beePrefabsPool;
+
+    private static readonly string[] DefaultBeeNames = new string[]
+    {
+        "Harold", "Jenna", "Lily", "Tyrone",
+        "Sunny", "Maple", "Peach", "Moss",
+        "Poppy", "Willow", "Clover", "Hazel"
+    };
+
     [Header("Bee Spawning")]
-    public GameObject beePrefab;
-    public int beesToSpawn = 1;
+    [Tooltip("How often this hive sends out a forager (seconds).")]
     public float spawnInterval = 3f;
 
     private float spawnTimer = 0f;
 
-    // ---- Derived values / helpers ----
+    // ---- Derived values used by UI ----
 
     public int TotalBees => workerBees + droneBees + broodBees;
-
     public float PopulationRatio => Mathf.Clamp01((float)TotalBees / maxPopulation);
 
+    // ------------------------------------------------------------
+
+    private void Awake()
+    {
+        InitializeWorkerRoster();
+    }
 
     private void Update()
     {
@@ -97,100 +129,97 @@ public class Beehive : MonoBehaviour
         }
     }
 
-    // Bee Spawning
+    // Fill / validate the hive's bee roster
+    private void InitializeWorkerRoster()
+    {
+        if (visibleWorkerCount <= 0)
+            visibleWorkerCount = 4;
+
+        // If already configured in inspector and looks valid, don't overwrite
+        if (workerBeeRoster != null && workerBeeRoster.Length == visibleWorkerCount)
+        {
+            bool allSet = true;
+            for (int i = 0; i < workerBeeRoster.Length; i++)
+            {
+                if (workerBeeRoster[i].prefab == null)
+                {
+                    allSet = false;
+                    break;
+                }
+            }
+
+            if (allSet)
+                return;
+        }
+
+        workerBeeRoster = new HiveBee[visibleWorkerCount];
+
+        var namePool = new System.Collections.Generic.List<string>(DefaultBeeNames);
+
+        for (int i = 0; i < visibleWorkerCount; i++)
+        {
+            // Names
+            if (namePool.Count == 0)
+                namePool = new System.Collections.Generic.List<string>(DefaultBeeNames);
+
+            int nameIndex = Random.Range(0, namePool.Count);
+            string chosenName = namePool[nameIndex];
+            namePool.RemoveAt(nameIndex);
+
+            workerBeeRoster[i].name = chosenName;
+
+            // Prefab type (personality/stats) for this bee
+            if (beePrefabsPool != null && beePrefabsPool.Length > 0)
+            {
+                int prefabIndex = Random.Range(0, beePrefabsPool.Length);
+                workerBeeRoster[i].prefab = beePrefabsPool[prefabIndex];
+            }
+            else
+            {
+                workerBeeRoster[i].prefab = null; // you can assign manually in inspector
+            }
+        }
+    }
+
+    // Sends out one forager based on the roster + closest flower
     private void SpawnBee()
     {
-        if (beePrefab == null) return;
         if (FlowerManager.Instance == null) return;
         if (FlowerManager.Instance.allFlowers.Count == 0) return;
+
+        if (workerBeeRoster == null || workerBeeRoster.Length == 0)
+            InitializeWorkerRoster();
 
         // Find the closest flower that still has a free bee slot
         Flower closestFlower = FlowerManager.Instance.GetClosestFlower(transform.position);
         if (closestFlower == null)
         {
-            // All flowers are full → don't spawn a bee right now
+            // All flowers full → don't spawn a bee right now
+            return;
+        }
+
+        // Pick one worker from this hive's roster in random order
+        int index = Random.Range(0, workerBeeRoster.Length);
+        HiveBee hiveBee = workerBeeRoster[index];
+
+        if (hiveBee.prefab == null)
+        {
+            // No prefab assigned for this slot, nothing to spawn
             return;
         }
 
         Vector3 spawnPos = transform.position + Vector3.up * 1.5f; // lift above hive
-        GameObject newBee = Instantiate(beePrefab, spawnPos, Quaternion.identity);
+        GameObject newBee = Instantiate(hiveBee.prefab, spawnPos, Quaternion.identity);
 
         BeeForager bee = newBee.GetComponent<BeeForager>();
-        bee.homeHive = this;
-        bee.SetFlower(closestFlower.transform);
-    }
-
-
-    // ---- Example helper methods to use later in gameplay ----
-
-    public void ReplaceQueen()
-    {
-        hasQueen = true;
-        queenAgeDays = 0f;
-        queenProductivity = 1f;
-        // You could also slightly lower aggression when replacing with a gentle queen
-    }
-
-    public void AddBees(int workers, int drones, int brood = 0)
-    {
-        workerBees = Mathf.Max(0, workerBees + workers);
-        droneBees = Mathf.Max(0, droneBees + drones);
-        broodBees = Mathf.Max(0, broodBees + brood);
-
-        // Clamp to max population
-        int total = TotalBees;
-        if (total > maxPopulation)
+        if (bee != null)
         {
-            float scale = (float)maxPopulation / total;
-            workerBees = Mathf.RoundToInt(workerBees * scale);
-            droneBees  = Mathf.RoundToInt(droneBees * scale);
-            broodBees  = Mathf.RoundToInt(broodBees * scale);
+            bee.homeHive = this;
+            // If prefab has its own default name, keep it, otherwise use hive roster name
+            if (!string.IsNullOrEmpty(hiveBee.name))
+                bee.beeName = hiveBee.name;
+
+            bee.SetFlower(closestFlower.transform);
         }
-    }
-
-    public void DamageHive(float amount)
-    {
-        hiveHealth = Mathf.Clamp(hiveHealth - amount, 0f, 100f);
-    }
-
-    public void HealHive(float amount)
-    {
-        hiveHealth = Mathf.Clamp(hiveHealth + amount, 0f, 100f);
-    }
-
-    public void ApplyMiteTreatment(float effectiveness)
-    {
-        // effectiveness = 0–1 fraction of mites removed
-        effectiveness = Mathf.Clamp01(effectiveness);
-        miteLevel = Mathf.Clamp(miteLevel * (1f - effectiveness), 0f, 100f);
-    }
-
-    public void ApplyDiseaseTreatment(float effectiveness)
-    {
-        effectiveness = Mathf.Clamp01(effectiveness);
-        diseaseLevel = Mathf.Clamp(diseaseLevel * (1f - effectiveness), 0f, 100f);
-    }
-
-    public void AdjustMoisture(float delta)
-    {
-        moistureLevel = Mathf.Clamp(moistureLevel + delta, 0f, 100f);
-    }
-
-    // You can call this once per in-game day later
-    public void DailyUpdate(float daysPassed = 1f)
-    {
-        // Queen ages
-        queenAgeDays += daysPassed;
-
-        // Simple example: very old queen becomes less productive & hive more aggressive
-        if (queenAgeDays > 365f) // older than 1 year
-        {
-            queenProductivity = Mathf.Clamp(queenProductivity - 0.05f * daysPassed, 0.2f, 1.5f);
-            aggression = Mathf.Clamp(aggression + 2f * daysPassed, 0f, 100f);
-        }
-
-        // Untreated mites/disease slowly hurt health
-        float healthPenalty = (miteLevel + diseaseLevel) * 0.01f * daysPassed;
-        DamageHive(healthPenalty);
     }
 }

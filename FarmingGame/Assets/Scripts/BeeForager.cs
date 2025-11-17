@@ -6,8 +6,12 @@ public class BeeForager : MonoBehaviour
     public enum BeeState { Idle, FlyingToFlower, Pollinating, Returning }
     public BeeState state = BeeState.Idle;
 
-    // Personality type for this bee – set per prefab
+    // Personality type for this bee – set on the prefab in the Inspector
     public enum BeePersonality { Calm, Energetic, Sleepy, Diligent }
+
+    [Header("Identity")]
+    public string beeName = "Worker Bee";
+    public BeePersonality personality = BeePersonality.Calm;
 
     [Header("References")]
     public Beehive homeHive;
@@ -23,9 +27,7 @@ public class BeeForager : MonoBehaviour
     [Header("Pollination Settings")]
     public float pollinationDuration = 3f;
 
-    [Header("Personality (set on prefab)")]
-    public BeePersonality personality = BeePersonality.Calm;
-
+    [Header("Personality Multipliers (set per prefab)")]
     [Tooltip("Multiplier applied to flightSpeed based on this bee type.")]
     public float flightSpeedMultiplier = 1f;
 
@@ -41,9 +43,7 @@ public class BeeForager : MonoBehaviour
     {
         if (homeHive != null)
             homePosition = homeHive.transform.position;
-
-        // No random personality here – everything comes from the prefab.
-        // You can still add logic later if you want.
+        // All stats & multipliers come from the prefab.
     }
 
     // Called by the hive
@@ -85,7 +85,7 @@ public class BeeForager : MonoBehaviour
         {
             Vector3 dir = (destination - transform.position).normalized;
 
-            // Use personality-adjusted speed
+            // Use personality-adjusted speed (set per prefab)
             float currentSpeed = flightSpeed * flightSpeedMultiplier;
             transform.position += dir * currentSpeed * Time.deltaTime;
 
@@ -128,7 +128,7 @@ public class BeeForager : MonoBehaviour
         float timer = 0f;
         Vector3 basePos = transform.position;
 
-        // Personality-adjusted pollination time
+        // Personality-adjusted pollination time (from prefab)
         float duration = pollinationDuration * pollinationDurationMultiplier;
 
         while (timer < duration)
@@ -141,7 +141,10 @@ public class BeeForager : MonoBehaviour
 
         // Reward hive with personality-adjusted pollen
         float baseReward = Random.Range(0.1f, 0.3f);
-        homeHive.storedPollen += baseReward * pollenYieldMultiplier;
+        if (homeHive != null)
+        {
+            homeHive.storedPollen += baseReward * pollenYieldMultiplier;
+        }
 
         // We are done with this flower: free up its slot
         if (targetFlower != null)

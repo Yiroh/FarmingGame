@@ -114,8 +114,13 @@ MonoBehaviour:
   storedPropolis: 0
   localFlowerQuality: 50
   localClimateSuitability: 70
-  beePrefab: {fileID: 8263156533035083641, guid: 90788c6234c5ecb4681e252c76f97703, type: 3}
-  beesToSpawn: 1
+  visibleWorkerCount: 4
+  workerBeeRoster: []
+  beePrefabsPool:
+  - {fileID: 8263156533035083641, guid: 33df90f8e92d3244f86dd4f93592375d, type: 3}
+  - {fileID: 8263156533035083641, guid: 081991b8307a6c74bb1852e90eb05bc8, type: 3}
+  - {fileID: 8263156533035083641, guid: 04603f8bd34b7044493a2b83991c04cd, type: 3}
+  - {fileID: 8263156533035083641, guid: e4ed232dbcc83eb40ab906714625a1e5, type: 3}
   spawnInterval: 10
 --- !u!65 &-8944649743174512987
 BoxCollider:
