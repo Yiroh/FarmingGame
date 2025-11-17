@@ -17,13 +17,11 @@ public class GridSystem : MonoBehaviour
     public GameObject highlightPrefab;
     private GameObject highlightInstance;
 
-    [Header("Highlight Colors")]
-    [Tooltip("Normal highlight color.")]
-    public Color highlightNormalColor = new Color(1f, 1f, 1f, 0.25f);
-    [Tooltip("Highlight color when in delete mode and you can delete here.")]
-    public Color highlightDeleteColor = new Color(1f, 0f, 0f, 0.4f);
+    [Header("Highlight Color")]
+    [Tooltip("Color of the grid highlight square.")]
+    public Color highlightColor = new Color(1f, 1f, 1f, 0.25f);
 
-    [Header("Ghost Preview (Place Mode)")]
+    [Header("Ghost Preview")]
     public Material ghostMaterial;
     private GameObject ghostInstance;
 
@@ -31,9 +29,9 @@ public class GridSystem : MonoBehaviour
     [Tooltip("Max distance from player to place / delete / interact.")]
     public float maxInteractionDistance = 5f;
 
-    [Header("Ghost Colors (Place Mode)")]
-    public Color validColor = new Color(0f, 1f, 0f, 0.5f);
-    public Color invalidColor = new Color(1f, 0f, 0f, 0.5f);
+    [Header("Ghost Colors")]
+    public Color validColor = new Color(0f, 1f, 0f, 0.5f);   // place OK
+    public Color invalidColor = new Color(1f, 0f, 0f, 0.5f); // place blocked / delete
 
     [Header("Rotation")]
     [Tooltip("How many degrees to rotate each time you press R in place mode.")]
@@ -91,7 +89,10 @@ public class GridSystem : MonoBehaviour
         if (highlightPrefab == null) return;
 
         if (highlightInstance == null)
+        {
             highlightInstance = Instantiate(highlightPrefab);
+            ApplyHighlightColor();
+        }
 
         if (Mouse.current == null) return;
 
@@ -104,38 +105,20 @@ public class GridSystem : MonoBehaviour
             Vector3 center = GridToWorld(cell);
 
             highlightInstance.transform.position = center;
-
-            // Update highlight color based on mode + cell
-            UpdateHighlightVisual(cell);
         }
     }
 
-    private void UpdateHighlightVisual(Vector2Int cell)
+    private void ApplyHighlightColor()
     {
         if (highlightInstance == null) return;
 
-        Color target = highlightNormalColor;
-
-        // In delete mode, show red if this tile is occupied and within range
-        if (PlayerController.Instance != null &&
-            PlayerController.Instance.currentAction == GridAction.Delete)
-        {
-            bool occupied = grid.ContainsKey(cell) && grid[cell].occupied;
-            bool inRange = IsWithinInteractionRange(cell);
-
-            if (occupied && inRange)
-            {
-                target = highlightDeleteColor;
-            }
-        }
-
-        // Apply color to ANY renderer on the interaction box
         foreach (var r in highlightInstance.GetComponentsInChildren<Renderer>())
         {
-            if (r.material.HasProperty("_Color"))
-            {
-                r.material.color = target;
-            }
+            var mat = r.material;
+            if (mat.HasProperty("_BaseColor"))       // URP Lit
+                mat.SetColor("_BaseColor", highlightColor);
+            else if (mat.HasProperty("_Color"))      // Built-in
+                mat.color = highlightColor;
         }
     }
 
@@ -144,14 +127,46 @@ public class GridSystem : MonoBehaviour
         if (PlayerController.Instance == null)
             return;
 
-        // Ghost is only for PLACE mode. Delete mode uses the red highlight as preview.
-        if (PlayerController.Instance.currentAction != GridAction.Place)
+        var action = PlayerController.Instance.currentAction;
+
+        // No ghost if no highlight yet
+        if (highlightInstance == null)
         {
             if (ghostInstance != null)
                 ghostInstance.SetActive(false);
             return;
         }
 
+        // Ensure ghost exists when needed
+        if (ghostInstance == null)
+        {
+            if (placePrefab == null) return;
+            ghostInstance = Instantiate(placePrefab);
+            ApplyGhostMaterial(ghostInstance);
+        }
+
+        // Decide behavior based on mode
+        Vector2Int cell = WorldToGrid(highlightInstance.transform.position);
+
+        switch (action)
+        {
+            case GridAction.Place:
+                UpdatePlaceGhost(cell);
+                break;
+
+            case GridAction.Delete:
+                UpdateDeleteGhost(cell);
+                break;
+
+            default:
+                if (ghostInstance != null)
+                    ghostInstance.SetActive(false);
+                break;
+        }
+    }
+
+    private void UpdatePlaceGhost(Vector2Int cell)
+    {
         if (placePrefab == null)
         {
             if (ghostInstance != null)
@@ -159,23 +174,39 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
-        if (ghostInstance == null)
+        ghostInstance.SetActive(true);
+        ghostInstance.transform.position = highlightInstance.transform.position;
+        ghostInstance.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
+
+        bool canPlace = CanPlaceAtCell(cell);
+        SetGhostColor(canPlace ? validColor : invalidColor);
+    }
+
+    private void UpdateDeleteGhost(Vector2Int cell)
+    {
+        // Only show delete ghost if there's something to delete and it's in range
+        bool occupied = grid.ContainsKey(cell) && grid[cell].occupied;
+        bool inRange = IsWithinInteractionRange(cell);
+
+        if (!occupied || !inRange)
         {
-            ghostInstance = Instantiate(placePrefab);
-            ApplyGhostMaterial(ghostInstance);
+            if (ghostInstance != null)
+                ghostInstance.SetActive(false);
+            return;
         }
 
         ghostInstance.SetActive(true);
 
-        if (highlightInstance != null)
-        {
-            ghostInstance.transform.position = highlightInstance.transform.position;
-            ghostInstance.transform.rotation = Quaternion.Euler(0f, currentRotationY, 0f);
+        // Position ghost over the target object
+        GameObject obj = grid[cell].objectOnCell;
+        Vector3 pos = GridToWorld(cell);
+        Quaternion rot = obj != null ? obj.transform.rotation : Quaternion.identity;
 
-            Vector2Int cell = WorldToGrid(highlightInstance.transform.position);
-            bool canPlace = CanPlaceAtCell(cell);
-            SetGhostColor(canPlace);
-        }
+        ghostInstance.transform.position = pos;
+        ghostInstance.transform.rotation = rot;
+
+        // Red = "this will be deleted"
+        SetGhostColor(invalidColor);
     }
 
     private void ApplyGhostMaterial(GameObject obj)
@@ -186,16 +217,17 @@ public class GridSystem : MonoBehaviour
         }
     }
 
-    private void SetGhostColor(bool canPlace)
+    private void SetGhostColor(Color color)
     {
         if (ghostInstance == null) return;
 
-        Color targetColor = canPlace ? validColor : invalidColor;
-
         foreach (var r in ghostInstance.GetComponentsInChildren<MeshRenderer>())
         {
-            if (r.material.HasProperty("_Color"))
-                r.material.color = targetColor;
+            var mat = r.material;
+            if (mat.HasProperty("_BaseColor"))
+                mat.SetColor("_BaseColor", color);
+            else if (mat.HasProperty("_Color"))
+                mat.color = color;
         }
     }
 
@@ -222,7 +254,7 @@ public class GridSystem : MonoBehaviour
     private bool IsWithinInteractionRange(Vector2Int cell)
     {
         if (PlayerController.Instance == null)
-            return true; // if no player reference, skip range check
+            return true; // if no player reference, skip range check (safe default)
 
         Vector3 targetWorldPos = GridToWorld(cell);
         Vector3 playerPos = PlayerController.Instance.transform.position;
