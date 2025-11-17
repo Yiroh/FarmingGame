@@ -110,9 +110,10 @@ public class Beehive : MonoBehaviour
         BeeForager bee = newBee.GetComponent<BeeForager>();
         bee.homeHive = this;
 
-        Flower randomFlower = FlowerManager.Instance.GetRandomFlower();
-        if (randomFlower != null)
-            bee.SetFlower(randomFlower.transform);
+        Flower closestFlower = FlowerManager.Instance.GetClosestFlower(transform.position);
+        if (closestFlower != null)
+            bee.SetFlower(closestFlower.transform);
+
     }
 
     // ---- Example helper methods to use later in gameplay ----
