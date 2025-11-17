@@ -73,11 +73,46 @@ public class Beehive : MonoBehaviour
     [Tooltip("Local climate suitability (0–100).")]
     [Range(0f, 100f)] public float localClimateSuitability = 70f;
 
+    [Header("Bee Spawning")]
+    public GameObject beePrefab;
+    public int beesToSpawn = 1;
+    public float spawnInterval = 3f;
+
+    private float spawnTimer = 0f;
+
     // ---- Derived values / helpers ----
 
     public int TotalBees => workerBees + droneBees + broodBees;
 
     public float PopulationRatio => Mathf.Clamp01((float)TotalBees / maxPopulation);
+
+
+    private void Update()
+    {
+        spawnTimer += Time.deltaTime;
+        if (spawnTimer >= spawnInterval)
+        {
+            spawnTimer = 0f;
+            SpawnBee();
+        }
+    }
+
+    // Bee Spawning
+    private void SpawnBee()
+    {
+        if (beePrefab == null) return;
+
+        Vector3 spawnPos = transform.position + Vector3.up * 1.5f; // lift above hive
+
+        GameObject newBee = Instantiate(beePrefab, spawnPos, Quaternion.identity);
+
+        BeeForager bee = newBee.GetComponent<BeeForager>();
+        bee.homeHive = this;
+
+        Flower randomFlower = FlowerManager.Instance.GetRandomFlower();
+        if (randomFlower != null)
+            bee.SetFlower(randomFlower.transform);
+    }
 
     // ---- Example helper methods to use later in gameplay ----
 
