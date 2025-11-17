@@ -480,6 +480,8 @@ public class GridSystem : MonoBehaviour
             saveData.cells.Add(cellData);
         }
 
+        // TODO: Save prefab rotations
+
         string json = JsonUtility.ToJson(saveData, true);
         File.WriteAllText(Path.Combine(Application.persistentDataPath, saveFileName), json);
 
