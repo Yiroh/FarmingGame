@@ -98,7 +98,7 @@ MonoBehaviour:
   hasQueen: 1
   queenAgeDays: 0
   queenProductivity: 1
-  workerBees: 0
+  workerBees: 4
   droneBees: 0
   broodBees: 0
   maxPopulation: 0
@@ -114,7 +114,6 @@ MonoBehaviour:
   storedPropolis: 0
   localFlowerQuality: 50
   localClimateSuitability: 70
-  visibleWorkerCount: 4
   workerBeeRoster: []
   beePrefabsPool:
   - {fileID: 8263156533035083641, guid: 33df90f8e92d3244f86dd4f93592375d, type: 3}

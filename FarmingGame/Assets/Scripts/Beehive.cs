@@ -77,9 +77,6 @@ public class Beehive : MonoBehaviour
     // Worker bee roster – the "vector" of bees this hive reuses
     // ------------------------------------------------------------
 
-    [Header("Worker Bee Roster")]
-    [Tooltip("How many individual worker bees this hive tracks for foraging.")]
-    public int visibleWorkerCount = 4;
 
     [System.Serializable]
     public struct HiveBee
@@ -130,13 +127,13 @@ public class Beehive : MonoBehaviour
     }
 
     // Fill / validate the hive's bee roster
-    private void InitializeWorkerRoster()
+   private void InitializeWorkerRoster()
     {
-        if (visibleWorkerCount <= 0)
-            visibleWorkerCount = 4;
+        // Use workerBees as the number of "named" workers this hive tracks
+        int rosterSize = Mathf.Max(1, workerBees);
 
         // If already configured in inspector and looks valid, don't overwrite
-        if (workerBeeRoster != null && workerBeeRoster.Length == visibleWorkerCount)
+        if (workerBeeRoster != null && workerBeeRoster.Length == rosterSize)
         {
             bool allSet = true;
             for (int i = 0; i < workerBeeRoster.Length; i++)
@@ -152,11 +149,11 @@ public class Beehive : MonoBehaviour
                 return;
         }
 
-        workerBeeRoster = new HiveBee[visibleWorkerCount];
+        workerBeeRoster = new HiveBee[rosterSize];
 
         var namePool = new System.Collections.Generic.List<string>(DefaultBeeNames);
 
-        for (int i = 0; i < visibleWorkerCount; i++)
+        for (int i = 0; i < rosterSize; i++)
         {
             // Names
             if (namePool.Count == 0)
@@ -180,6 +177,7 @@ public class Beehive : MonoBehaviour
             }
         }
     }
+
 
     // Sends out one forager based on the roster + closest flower
     private void SpawnBee()
