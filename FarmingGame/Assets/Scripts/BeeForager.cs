@@ -82,7 +82,7 @@ public class BeeForager : MonoBehaviour
         // Arrived at destination
         state = nextState;
 
-        if (nextState == BeeState.Idle)
+        if (nextState == BeeState.Idle || flowerTarget == null)
         {
             // Bee has returned to hive → destroy it
             Destroy(gameObject);

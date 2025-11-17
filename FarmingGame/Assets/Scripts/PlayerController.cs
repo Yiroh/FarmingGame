@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System.Collections.Generic;
 
 public class PlayerController : MonoBehaviour
 {
@@ -22,6 +23,18 @@ public class PlayerController : MonoBehaviour
     [Header("Grid Interaction")]
     public GridSystem gridSystem;
     public GridAction currentAction = GridAction.None; // Start with no tool selected
+
+    // Choose from Inventory
+    public GameObject SelectedPrefab { get; private set; }
+
+    // Called by UI or other systems to set which prefab the player is placing.
+    public void SelectPrefab(GameObject prefab)
+    {
+        SelectedPrefab = prefab;
+
+        if (GridSystem.Instance != null)
+            GridSystem.Instance.SetPlacePrefab(prefab);
+    }
 
     private void Update()
     {
@@ -61,24 +74,18 @@ public class PlayerController : MonoBehaviour
 
     private void HandleInteractionInput()
     {
-        if (gridSystem == null || Keyboard.current == null) return;
+        if (Keyboard.current == null) return;
 
         // Space bar triggers interaction at highlighted cell
         if (Keyboard.current.spaceKey.wasPressedThisFrame && currentAction != GridAction.None)
         {
-            gridSystem.TryInteractWithHighlighted(currentAction);
+            GridSystem.Instance.TryInteractWithHighlighted(currentAction);
         }
     }
 
     private void HandleActionSwitching()
     {
         if (Keyboard.current == null) return;
-
-        // Dev / debug hotkeys for manually choosing tools
-        if (Keyboard.current.digit1Key.wasPressedThisFrame) currentAction = GridAction.Place;
-        if (Keyboard.current.digit2Key.wasPressedThisFrame) currentAction = GridAction.Delete;
-        if (Keyboard.current.digit3Key.wasPressedThisFrame) currentAction = GridAction.Select;
-        if (Keyboard.current.digit4Key.wasPressedThisFrame) currentAction = GridAction.Harvest;
 
         // B = toggle build mode (future: open radial building UI here)
         if (Keyboard.current.bKey.wasPressedThisFrame)
@@ -94,7 +101,18 @@ public class PlayerController : MonoBehaviour
                 // Later:
                 // - Show your circular / radial building UI
                 // - Let player choose a building type
-                // - Call gridSystem.SetPlacePrefab(selectedPrefab);
+                // - Call GridSystem.Instance.SetPlacePrefab(selectedPrefab);
+            }
+        }
+        if (Keyboard.current.xKey.wasPressedThisFrame)
+        {
+            if (currentAction == GridAction.Delete)
+            {
+                currentAction = GridAction.None;   // exit build mode
+            }
+            else
+            {
+                currentAction = GridAction.Delete;  // enter build mode with current prefab
             }
         }
     }
@@ -105,12 +123,18 @@ public class PlayerController : MonoBehaviour
 
     private void HandleMouseInteraction()
     {
-        if (gridSystem == null || Mouse.current == null) return;
+        if (Mouse.current == null) return;
 
         // Left mouse click interacts at the highlighted cell
         if (Mouse.current.leftButton.wasPressedThisFrame && currentAction != GridAction.None)
         {
-            gridSystem.TryInteractWithHighlighted(currentAction);
+            GridSystem.Instance.TryInteractWithHighlighted(currentAction);
+        }
+        if (Mouse.current.leftButton.wasPressedThisFrame && currentAction == GridAction.None)
+        {
+            currentAction = GridAction.Select;
+            GridSystem.Instance.TryInteractWithHighlighted(currentAction);
+            currentAction = GridAction.None;
         }
     }
 

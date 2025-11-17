@@ -40,12 +40,16 @@ public class GridSystem : MonoBehaviour
 
     // Dictionary-based unlimited grid
     private Dictionary<Vector2Int, GridCell> grid = new Dictionary<Vector2Int, GridCell>();
+    public List<GameObject> allPlaceableItems; // Assign in inspectator
 
     [Header("Save/Load Settings")]
     public string saveFileName = "gridSave.json";
 
+    public static GridSystem Instance;
+
     private void Awake()
     {
+        Instance = this;
         LoadGrid();
         Debug.Log(Application.persistentDataPath);
     }
@@ -128,6 +132,7 @@ public class GridSystem : MonoBehaviour
             return;
 
         var action = PlayerController.Instance.currentAction;
+        placePrefab = PlayerController.Instance.SelectedPrefab;
 
         // No ghost if no highlight yet
         if (highlightInstance == null)
@@ -138,11 +143,13 @@ public class GridSystem : MonoBehaviour
         }
 
         // Ensure ghost exists when needed
-        if (ghostInstance == null)
+        if (ghostInstance == null && placePrefab != null)
         {
-            if (placePrefab == null) return;
             ghostInstance = Instantiate(placePrefab);
             ApplyGhostMaterial(ghostInstance);
+
+            // Disable scripts so ghost doesn't run behavior
+            SetActiveComponents(ghostInstance, false);
         }
 
         // Decide behavior based on mode
@@ -195,18 +202,30 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
-        ghostInstance.SetActive(true);
-
-        // Position ghost over the target object
         GameObject obj = grid[cell].objectOnCell;
         Vector3 pos = GridToWorld(cell);
         Quaternion rot = obj != null ? obj.transform.rotation : Quaternion.identity;
 
-        ghostInstance.transform.position = pos;
-        ghostInstance.transform.rotation = rot;
+        // Destroy old ghost if it exists
+        if (ghostInstance != null)
+            Destroy(ghostInstance);
 
-        // Red = "this will be deleted"
-        SetGhostColor(invalidColor);
+        // Instantiate the correct prefab for preview
+        if (obj != null)
+        {
+            string prefabName = obj.name.Replace("(Clone)", "");
+            GameObject prefab = GetPrefabByName(prefabName);
+
+            if (prefab != null)
+            {
+                ghostInstance = Instantiate(prefab);
+                ApplyGhostMaterial(ghostInstance);
+                SetActiveComponents(ghostInstance, false); // disable scripts
+                ghostInstance.transform.position = pos;
+                ghostInstance.transform.rotation = rot;
+                SetGhostColor(invalidColor);
+            }
+        }
     }
 
     private void ApplyGhostMaterial(GameObject obj)
@@ -288,6 +307,19 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
+        // If the item you selected isn't placeable
+        if (placePrefab == null)
+        {
+            Debug.Log("No placeable prefab selected.");
+            return;
+        }
+
+        // Consume from inventory
+        int slot = System.Array.IndexOf(Inventory.Instance.itemPrefabs, placePrefab);
+        if (slot >= 0)
+            Inventory.Instance.ConsumeItem(slot);
+
+
         Vector3 pos = GridToWorld(cell);
         Quaternion rot = Quaternion.Euler(0f, currentRotationY, 0f);
         GameObject obj = Instantiate(placePrefab, pos, rot);
@@ -297,6 +329,15 @@ public class GridSystem : MonoBehaviour
 
         grid[cell].occupied = true;
         grid[cell].objectOnCell = obj;
+
+        // Enable scripts now that object is actually placed
+        SetActiveComponents(obj, true);
+        // If it's a flower, register it now
+        Flower flowerComp = obj.GetComponent<Flower>();
+        if (flowerComp != null)
+        {
+            FlowerManager.Instance.allFlowers.Add(flowerComp);
+        }
 
         Debug.Log($"Placed object at {cell}");
         SaveGrid();
@@ -316,9 +357,15 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
+        if (grid[cell].objectOnCell.TryGetComponent<Flower>(out var flower))
+        {
+            FlowerManager.Instance.allFlowers.Remove(flower);
+        }
+
         Destroy(grid[cell].objectOnCell);
         grid[cell].occupied = false;
         grid[cell].objectOnCell = null;
+
 
         Debug.Log($"Deleted object at {cell}");
         SaveGrid();
@@ -392,7 +439,7 @@ public class GridSystem : MonoBehaviour
     {
         return new Vector3(
             cell.x * cellSize + cellSize / 2f,
-            0.01f,
+            0.7f,
             cell.y * cellSize + cellSize / 2f
         );
     }
@@ -458,7 +505,14 @@ public class GridSystem : MonoBehaviour
             if (prefab == null) continue;
 
             Vector3 pos = GridToWorld(cell);
-            GameObject obj = Instantiate(prefab, pos, Quaternion.identity);
+            GameObject obj = Instantiate(prefab, pos, Quaternion.identity); // TODO: FIX ROTATION HERE
+
+            // If this is a flower, register it with FlowerManager
+            Flower flowerComponent = obj.GetComponent<Flower>();
+            if (flowerComponent != null && FlowerManager.Instance != null)
+            {
+                FlowerManager.Instance.allFlowers.Add(flowerComponent);
+            }
 
             if (!grid.ContainsKey(cell))
                 grid[cell] = new GridCell();
@@ -472,11 +526,14 @@ public class GridSystem : MonoBehaviour
 
     private GameObject GetPrefabByName(string name)
     {
-        if (placePrefab != null && placePrefab.name == name)
-            return placePrefab;
+        foreach (var prefab in allPlaceableItems)
+        {
+            if (prefab != null && prefab.name == name)
+                return prefab;
+        }
 
-        Debug.LogWarning($"Prefab {name} not found. Using default placePrefab.");
-        return placePrefab;
+        Debug.LogWarning($"Prefab {name} not found.");
+        return null;
     }
 
     #endregion
@@ -491,11 +548,29 @@ public class GridSystem : MonoBehaviour
     {
         placePrefab = newPrefab;
 
-        // Force the ghost to rebuild with the new prefab
         if (ghostInstance != null)
         {
             Destroy(ghostInstance);
             ghostInstance = null;
+        }
+
+        // Instantiate new ghost if a prefab is selected
+        if (placePrefab != null && highlightInstance != null)
+        {
+            ghostInstance = Instantiate(placePrefab);
+            ApplyGhostMaterial(ghostInstance);
+            ghostInstance.SetActive(true);
+            SetActiveComponents(ghostInstance, false);
+            ghostInstance.transform.position = highlightInstance.transform.position;
+        }
+    }
+
+    // Helper function for ghost objects
+    private void SetActiveComponents(GameObject obj, bool active)
+    {
+        foreach (var comp in obj.GetComponentsInChildren<MonoBehaviour>())
+        {
+            comp.enabled = active;
         }
     }
 

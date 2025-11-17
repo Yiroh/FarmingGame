@@ -101,6 +101,7 @@ public class Beehive : MonoBehaviour
     private void SpawnBee()
     {
         if (beePrefab == null) return;
+        if (FlowerManager.Instance.allFlowers.Count == 0) return;
 
         Vector3 spawnPos = transform.position + Vector3.up * 1.5f; // lift above hive
 
