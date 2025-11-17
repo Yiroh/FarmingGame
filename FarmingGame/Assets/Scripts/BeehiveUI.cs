@@ -18,6 +18,34 @@ public class BeehiveUI : MonoBehaviour
     public TextMeshProUGUI resourcesText;
 
     private Beehive currentHive;
+    
+    private void Update()
+    {
+        // Only care if a hive is currently being shown
+        if (currentHive == null)
+            return;
+
+        // Need the player and grid system to check distance + max range
+        if (PlayerController.Instance == null || GridSystem.Instance == null)
+            return;
+
+        float maxDist = GridSystem.Instance.maxInteractionDistance;
+
+        Vector3 playerPos = PlayerController.Instance.transform.position;
+        Vector3 hivePos = currentHive.transform.position;
+
+        // Use flat (XZ) distance, same idea as GridSystem.IsWithinInteractionRange
+        playerPos.y = 0f;
+        hivePos.y = 0f;
+
+        float dist = Vector3.Distance(playerPos, hivePos);
+
+        if (dist > maxDist)
+        {
+            // Player walked out of interaction range -> close hive UI
+            Hide();
+        }
+    }
 
     private void Awake()
     {
