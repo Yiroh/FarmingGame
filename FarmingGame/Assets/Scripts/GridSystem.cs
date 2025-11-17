@@ -23,6 +23,10 @@ public class GridSystem : MonoBehaviour
     [Header("Placement Constraints")]
     public float maxPlacementDistance = 5f;
 
+    [Header("Ghost Colors")]
+    public Color validColor = new Color(0f, 1f, 0f, 0.5f);
+    public Color invalidColor = new Color(1f, 0f, 0f, 0.5f);
+
     // Dictionary-based unlimited grid
     private Dictionary<Vector2Int, GridCell> grid = new Dictionary<Vector2Int, GridCell>();
 
@@ -60,9 +64,6 @@ public class GridSystem : MonoBehaviour
             Vector3 center = GridToWorld(cell);
 
             highlightInstance.transform.position = center;
-
-            if (PlayerController.Instance.currentAction == GridAction.Place && ghostInstance != null)
-                ghostInstance.transform.position = center;
         }
     }
 
@@ -84,13 +85,38 @@ public class GridSystem : MonoBehaviour
         ghostInstance.SetActive(true);
 
         if (highlightInstance != null)
+        {
+            // Move ghost to highlighted cell
             ghostInstance.transform.position = highlightInstance.transform.position;
+
+            // Check if we can place here and color accordingly
+            Vector2Int cell = WorldToGrid(highlightInstance.transform.position);
+            bool canPlace = CanPlaceAtCell(cell);
+            SetGhostColor(canPlace);
+        }
     }
 
     private void ApplyGhostMaterial(GameObject obj)
     {
         foreach (var r in obj.GetComponentsInChildren<MeshRenderer>())
+        {
             r.material = ghostMaterial;
+        }
+    }
+
+    private void SetGhostColor(bool canPlace)
+    {
+        if (ghostInstance == null) return;
+
+        Color targetColor = canPlace ? validColor : invalidColor;
+
+        foreach (var r in ghostInstance.GetComponentsInChildren<MeshRenderer>())
+        {
+            if (r.material.HasProperty("_Color"))
+            {
+                r.material.color = targetColor;
+            }
+        }
     }
 
     #endregion
@@ -112,45 +138,49 @@ public class GridSystem : MonoBehaviour
         }
     }
 
+    private bool CanPlaceAtCell(Vector2Int cell)
+    {
+        // 1) Occupied check
+        if (grid.ContainsKey(cell) && grid[cell].occupied)
+            return false;
+
+        // 2) Distance check from player
+        if (PlayerController.Instance != null)
+        {
+            Vector3 targetWorldPos = GridToWorld(cell);
+
+            // Flatten to XZ so height doesn't matter
+            Vector3 playerPos = PlayerController.Instance.transform.position;
+            Vector3 flatPlayer = new Vector3(playerPos.x, 0f, playerPos.z);
+            Vector3 flatTarget = new Vector3(targetWorldPos.x, 0f, targetWorldPos.z);
+
+            float distance = Vector3.Distance(flatPlayer, flatTarget);
+            if (distance > maxPlacementDistance)
+                return false;
+        }
+
+        return true;
+    }
+
     private void Place(Vector2Int cell)
     {
-        if (grid.ContainsKey(cell) && grid[cell].occupied)
-    {
-        Debug.Log("Cell occupied — cannot place.");
-        return;
-    }
-
-    // --- NEW: distance check from player ---
-    if (PlayerController.Instance != null)
-    {
-        Vector3 targetWorldPos = GridToWorld(cell);
-
-        // Flatten to XZ so height doesn't matter
-        Vector3 playerPos = PlayerController.Instance.transform.position;
-        Vector3 flatPlayer = new Vector3(playerPos.x, 0f, playerPos.z);
-        Vector3 flatTarget = new Vector3(targetWorldPos.x, 0f, targetWorldPos.z);
-
-        float distance = Vector3.Distance(flatPlayer, flatTarget);
-
-        if (distance > maxPlacementDistance)
+        if (!CanPlaceAtCell(cell))
         {
-            Debug.Log("Too far from player to place here.");
+            Debug.Log("Cannot place here.");
             return;
         }
-    }
-    // --------------------------------------
 
-    Vector3 pos = GridToWorld(cell);
-    GameObject obj = Instantiate(placePrefab, pos, Quaternion.identity);
+        Vector3 pos = GridToWorld(cell);
+        GameObject obj = Instantiate(placePrefab, pos, Quaternion.identity);
 
-    if (!grid.ContainsKey(cell))
-        grid[cell] = new GridCell();
+        if (!grid.ContainsKey(cell))
+            grid[cell] = new GridCell();
 
-    grid[cell].occupied = true;
-    grid[cell].objectOnCell = obj;
+        grid[cell].occupied = true;
+        grid[cell].objectOnCell = obj;
 
-    Debug.Log($"Placed object at {cell}");
-    SaveGrid();
+        Debug.Log($"Placed object at {cell}");
+        SaveGrid();
     }
 
     private void Delete(Vector2Int cell)
@@ -210,7 +240,11 @@ public class GridSystem : MonoBehaviour
 
     public Vector3 GridToWorld(Vector2Int cell)
     {
-        return new Vector3(cell.x * cellSize + cellSize / 2f, 0.01f, cell.y * cellSize + cellSize / 2f);
+        return new Vector3(
+            cell.x * cellSize + cellSize / 2f,
+            0.01f,
+            cell.y * cellSize + cellSize / 2f
+        );
     }
 
     #endregion
