@@ -326,22 +326,37 @@ public class GridSystem : MonoBehaviour
 
     private void Select(Vector2Int cell)
     {
-        if (!grid.ContainsKey(cell) || !grid[cell].occupied)
-        {
+         if (!grid.ContainsKey(cell) || !grid[cell].occupied)
+         {
             Debug.Log("Selected empty tile.");
+            if (BeehiveUI.Instance != null)
+            {
+                BeehiveUI.Instance.Hide();
+            }
+                
             return;
-        }
 
+         }
         GameObject obj = grid[cell].objectOnCell;
         var hive = obj.GetComponent<Beehive>();
-
+        
         if (hive != null)
         {
-            Debug.Log($"Selected hive: {hive.hiveName} | Health: {hive.hiveHealth} | Bees: {hive.TotalBees} | Queen: {hive.hasQueen}");
+            Debug.Log($"Selected hive: {hive.hiveName}");
+            if (BeehiveUI.Instance != null)
+            {
+                BeehiveUI.Instance.ShowHive(hive);
+            }
+               
         }
         else
         {
             Debug.Log($"Selected: {obj.name}");
+            if (BeehiveUI.Instance != null)
+            {
+                BeehiveUI.Instance.Hide();
+            }
+                
         }
     }
 
