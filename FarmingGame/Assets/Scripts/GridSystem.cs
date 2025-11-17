@@ -454,7 +454,8 @@ public class GridSystem : MonoBehaviour
         public int x;
         public int y;
         public string prefabName;
-        // (Rotation not saved yet; can be added later.)
+        public float rotY;
+        
     }
 
     [System.Serializable]
@@ -475,12 +476,11 @@ public class GridSystem : MonoBehaviour
             {
                 x = kvp.Key.x,
                 y = kvp.Key.y,
-                prefabName = kvp.Value.objectOnCell.name.Replace("(Clone)", "")
+                prefabName = kvp.Value.objectOnCell.name.Replace("(Clone)", ""),
+                rotY = kvp.Value.objectOnCell.transform.eulerAngles.y // <-- NEW
             };
             saveData.cells.Add(cellData);
         }
-
-        // TODO: Save prefab rotations
 
         string json = JsonUtility.ToJson(saveData, true);
         File.WriteAllText(Path.Combine(Application.persistentDataPath, saveFileName), json);
@@ -507,9 +507,13 @@ public class GridSystem : MonoBehaviour
             if (prefab == null) continue;
 
             Vector3 pos = GridToWorld(cell);
-            GameObject obj = Instantiate(prefab, pos, Quaternion.identity); // TODO: FIX ROTATION HERE
 
-            // If this is a flower, register it with FlowerManager
+            // NEW: apply stored rotation (defaults to 0 if loading old saves)
+            Quaternion rot = Quaternion.Euler(0f, cellData.rotY, 0f);
+
+            GameObject obj = Instantiate(prefab, pos, rot);
+
+            // Flower registration stays the same...
             Flower flowerComponent = obj.GetComponent<Flower>();
             if (flowerComponent != null && FlowerManager.Instance != null)
             {
@@ -525,6 +529,7 @@ public class GridSystem : MonoBehaviour
 
         Debug.Log("Grid loaded!");
     }
+
 
     private GameObject GetPrefabByName(string name)
     {
