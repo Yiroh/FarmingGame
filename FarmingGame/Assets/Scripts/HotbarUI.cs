@@ -66,7 +66,7 @@ public class HotbarUI : MonoBehaviour
     {
         if (index < 0 || index >= slots.Count) return;
 
-        slots[index].Set(icon, 1);        // Update button image
+        slots[index].Set(icon, 1);        // Update button image // TODO: This isn't working.
         slotPrefabs[index] = prefab;      // Store prefab
 
         // If this slot is currently selected, tell player

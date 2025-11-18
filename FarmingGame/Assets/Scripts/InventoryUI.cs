@@ -38,6 +38,7 @@ public class InventoryUI : MonoBehaviour
                 Inventory.InventorySlot slot = inventory.slots[u.index];
                 if (!slot.IsEmpty)
                 {
+                    // TODO: Need to remove the inventory's slot icon and slot.prefab when we assign to hotbar, if successful.
                     HotbarUI.Instance.SetQuickSlotAuto(slot.icon, slot.prefab);
                 }
             });
