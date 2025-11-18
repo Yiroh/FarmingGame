@@ -320,9 +320,16 @@ public class GridSystem : MonoBehaviour
         }
 
         // Consume from inventory
-        int slot = System.Array.IndexOf(Inventory.Instance.itemPrefabs, placePrefab);
+        int slot = Inventory.Instance.slots.FindIndex(s => s.prefab == placePrefab);
         if (slot >= 0)
+        {
             Inventory.Instance.ConsumeItem(slot);
+        }
+        else
+        {
+            Debug.LogWarning("Tried to place an item that is not in the inventory: " + placePrefab.name);
+        }
+
 
 
         Vector3 pos = GridToWorld(cell);

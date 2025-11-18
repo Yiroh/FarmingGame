@@ -1,17 +1,15 @@
 using UnityEngine;
-using UnityEngine.UI;
-using TMPro;
+using System.Collections.Generic;
 
 public class InventoryUI : MonoBehaviour
 {
     public static InventoryUI Instance;
 
-    [Header("UI References")]
-    public GameObject inventoryPanel;    // Panel to show/hide
-    public Inventory inventory;          // Reference to your Inventory component
-    public Button[] uiButtons;           // Buttons in the grid (assign in inspector)
-    public Image[] uiIcons;              // Icon images on each button (assign in inspector)
-    public Text[] uiAmounts;             // Optional: text for amount (assign in inspector)
+    public GameObject slotPrefab;
+    public Transform container;
+    public Inventory inventory;
+
+    private List<UISlot> uiSlots = new List<UISlot>();
 
     private void Awake()
     {
@@ -20,62 +18,43 @@ public class InventoryUI : MonoBehaviour
 
     private void Start()
     {
+        GenerateSlots(inventory.slots.Count);
         Refresh();
         Close();
     }
 
-    private void Update()
+    void GenerateSlots(int count)
     {
-        if (Input.GetKeyDown(KeyCode.I))
+        for (int i = 0; i < count; i++)
         {
-            if (inventoryPanel.activeSelf) Close();
-            else Open();
+            GameObject obj = Instantiate(slotPrefab, container);
+            UISlot u = obj.GetComponent<UISlot>();
+
+            u.index = i;
+
+            // Clicking assigns to hotbar
+            u.button.onClick.AddListener(() =>
+            {
+                Inventory.InventorySlot slot = inventory.slots[u.index];
+                if (!slot.IsEmpty)
+                {
+                    HotbarUI.Instance.SetQuickSlotAuto(slot.icon, slot.prefab);
+                }
+            });
+
+            uiSlots.Add(u);
         }
-
-        if (Input.GetKeyDown(KeyCode.Escape))
-            Close();
-    }
-
-    public void Open()
-    {
-        inventoryPanel.SetActive(true);
-        Refresh();
-    }
-
-    public void Close()
-    {
-        inventoryPanel.SetActive(false);
     }
 
     public void Refresh()
     {
-        if (inventory == null) return;
-
-        for (int i = 0; i < uiButtons.Length; i++)
+        for (int i = 0; i < uiSlots.Count; i++)
         {
-            Sprite icon = (i < inventory.itemIcons.Length) ? inventory.itemIcons[i] : null;
-            GameObject prefab = (i < inventory.itemPrefabs.Length) ? inventory.itemPrefabs[i] : null;
-            int amount = (i < inventory.itemAmounts.Length) ? inventory.itemAmounts[i] : 0;
-
-            uiIcons[i].sprite = icon;
-            uiIcons[i].enabled = icon != null;
-
-            if (uiAmounts != null && i < uiAmounts.Length)
-            {
-                uiAmounts[i].text = (amount > 1) ? amount.ToString() : "";
-            }
-
-            uiButtons[i].onClick.RemoveAllListeners();
-            if (icon != null)
-            {
-                int index = i; // closure fix
-                uiButtons[i].onClick.AddListener(() =>
-                {
-                    HotbarUI.Instance.SetQuickSlot(HotbarUI.Instance.selectedHotbarIndex, 
-                                                   inventory.itemIcons[index], 
-                                                   inventory.itemPrefabs[index]);
-                });
-            }
+            var slot = inventory.slots[i];
+            uiSlots[i].Set(slot.icon, slot.amount);
         }
     }
+
+    public void Open() => container.gameObject.SetActive(true);
+    public void Close() => container.gameObject.SetActive(false);
 }

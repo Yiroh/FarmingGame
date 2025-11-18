@@ -26,6 +26,7 @@ public class PlayerController : MonoBehaviour
 
     // Choose from Inventory
     public GameObject SelectedPrefab { get; private set; }
+    private bool inventoryOpen = false;
 
     // Called by UI or other systems to set which prefab the player is placing.
     public void SelectPrefab(GameObject prefab)
@@ -38,6 +39,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        HandleInventoryToggle();
         HandleMovement();
         HandleInteractionInput();
         HandleActionSwitching();
@@ -49,6 +51,7 @@ public class PlayerController : MonoBehaviour
     private void HandleMovement()
     {
         if (Keyboard.current == null) return;
+        if (inventoryOpen) return;
 
         float h = 0f;
         float v = 0f;
@@ -115,6 +118,36 @@ public class PlayerController : MonoBehaviour
                 currentAction = GridAction.Delete;  // enter build mode with current prefab
             }
         }
+    }
+
+    // Handles keyboard interractions involving opening and closing the inventory
+    // Can open and close inventory with 'B' and close the inventory also with 'Esc'
+    private void HandleInventoryToggle()
+    {
+        if (Keyboard.current == null) return;
+
+        // Toggle with I
+        if (Keyboard.current.iKey.wasPressedThisFrame)
+        {
+            inventoryOpen = !inventoryOpen;
+            UpdateInventoryUI();
+        }
+
+        // Close with Escape
+        if (Keyboard.current.escapeKey.wasPressedThisFrame && inventoryOpen)
+        {
+            inventoryOpen = false;
+            UpdateInventoryUI();
+        }
+    }
+
+    // Helper function for inventory UI
+    private void UpdateInventoryUI()
+    {
+        if (inventoryOpen)
+            InventoryUI.Instance?.Open();
+        else
+            InventoryUI.Instance?.Close();
     }
 
     #endregion

@@ -1,95 +1,106 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using System.Collections.Generic;
 using TMPro;
-
 
 public class HotbarUI : MonoBehaviour
 {
     public static HotbarUI Instance;
 
-    [Header("Hotbar Setup")]
-    public Button[] slots = new Button[9];       // assign buttons
-    public Image[] slotIcons = new Image[9];     // assign icon images
-    public int[] slotAmounts = new int[9];       // optional amounts
-    public GameObject[] slotPrefabs = new GameObject[9]; // optional prefab references
+    public GameObject slotPrefab;
+    public Transform hotbarContainer;
 
+    private List<UISlot> slots = new List<UISlot>();
     public int selectedHotbarIndex = 0;
+    private GameObject[] slotPrefabs;
 
     private void Awake()
     {
         Instance = this;
+        slotPrefabs = new GameObject[9];
     }
 
     private void Start()
     {
-        // Add button listeners first
-        for (int i = 0; i < slots.Length; i++)
-        {
-            int index = i;
-            slots[i].onClick.AddListener(() => SelectSlot(index));
-        }
-
-        // Delay first slot selection
-        Invoke(nameof(SelectFirstSlot), 0.1f);
+        GenerateSlots(9);
+        SelectSlot(0); // select first hotbar slot by default
     }
 
     private void Update()
     {
+        HandleHotbarKeyInput();
+    }
+
+    private void HandleHotbarKeyInput()
+    {
         if (Keyboard.current == null) return;
 
-        // Number keys 1–9 select hotbar slot
-        for (int i = 0; i < slots.Length; i++)
+        if (Keyboard.current.digit1Key.wasPressedThisFrame) SelectSlot(0);
+        if (Keyboard.current.digit2Key.wasPressedThisFrame) SelectSlot(1);
+        if (Keyboard.current.digit3Key.wasPressedThisFrame) SelectSlot(2);
+        if (Keyboard.current.digit4Key.wasPressedThisFrame) SelectSlot(3);
+        if (Keyboard.current.digit5Key.wasPressedThisFrame) SelectSlot(4);
+        if (Keyboard.current.digit6Key.wasPressedThisFrame) SelectSlot(5);
+        if (Keyboard.current.digit7Key.wasPressedThisFrame) SelectSlot(6);
+        if (Keyboard.current.digit8Key.wasPressedThisFrame) SelectSlot(7);
+        if (Keyboard.current.digit9Key.wasPressedThisFrame) SelectSlot(8);
+    }
+
+    private void GenerateSlots(int count)
+    {
+        for (int i = 0; i < count; i++)
         {
-            Key key = Key.Digit1 + i; // Key.Digit1 to Key.Digit9
-            if (Keyboard.current[key].wasPressedThisFrame)
+            GameObject obj = Instantiate(slotPrefab, hotbarContainer);
+            UISlot ui = obj.GetComponent<UISlot>();
+            ui.index = i;
+
+            // When clicking a hotbar slot, select it for building
+            ui.button.onClick.AddListener(() => SelectSlot(ui.index));
+
+            slots.Add(ui);
+        }
+    }
+
+    public void SetQuickSlot(int index, Sprite icon, GameObject prefab)
+    {
+        if (index < 0 || index >= slots.Count) return;
+
+        slots[index].Set(icon, 1);        // Update button image
+        slotPrefabs[index] = prefab;      // Store prefab
+
+        // If this slot is currently selected, tell player
+        if (index == selectedHotbarIndex)
+            PlayerController.Instance?.SelectPrefab(prefab);
+    }
+
+    public void SetQuickSlotAuto(Sprite icon, GameObject prefab)
+    {
+        // First empty slot
+        for (int i = 0; i < slots.Count; i++)
+        {
+            if (slotPrefabs[i] == null)
             {
-                SelectSlot(i);
+                SetQuickSlot(i, icon, prefab);
+                return;
             }
         }
+        // If all full, overwrite currently selected
+        SetQuickSlot(selectedHotbarIndex, icon, prefab);
     }
 
     public void SelectSlot(int index)
     {
-        if (index < 0 || index >= slotIcons.Length) return;
+        if (index < 0 || index >= slots.Count) return;
 
         selectedHotbarIndex = index;
 
-        // Update colors
-        for (int i = 0; i < slotIcons.Length; i++)
-            if (slotIcons[i] != null)
-                slotIcons[i].color = (i == index) ? Color.yellow : Color.white;
+        // Highlight selected slot
+        for (int i = 0; i < slots.Count; i++)
+            slots[i].icon.color = (i == index ? Color.yellow : Color.white);
 
-        // Send prefab to PlayerController if it exists
-        if (slotPrefabs[index] != null && PlayerController.Instance != null)
-        {
-            PlayerController.Instance.SelectPrefab(slotPrefabs[index]);
-        }
-        else if (PlayerController.Instance != null)
-        {
-            PlayerController.Instance.SelectPrefab(null); // clear selection
-        }
-    }
-
-    public void SetQuickSlot(int index, Sprite icon, GameObject prefab = null)
-    {
-        if (index < 0 || index >= slots.Length) return;
-
-        slotIcons[index].sprite = icon;
-        slotIcons[index].enabled = icon != null;
-        slotPrefabs[index] = prefab;
-        slotAmounts[index] = 1; // optional
-
-        // Update PlayerController if this slot is currently selected
-        if (index == selectedHotbarIndex && prefab != null)
-        {
-            PlayerController.Instance.SelectPrefab(prefab);
-        }
-    }
-
-    private void SelectFirstSlot()
-    {
-        if (PlayerController.Instance != null)
-            SelectSlot(0);
+        // Tell player which prefab to use
+        PlayerController.Instance?.SelectPrefab(slotPrefabs[index]);
+        Debug.Log($"Selected slot {index+1} with prefab {slotPrefabs[index]}");
     }
 }

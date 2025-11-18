@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 9022418044978467616}
   - component: {fileID: 8240771577111848497}
   - component: {fileID: 5590051345547943317}
+  - component: {fileID: 7731709611622014853}
   m_Layer: 5
   m_Name: Item Slot
   m_TagString: Untagged
@@ -121,6 +122,22 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7731709611622014853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2719522656003377174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0441574f3b4e5c64ea49dad0a711735b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UISlot
+  icon: {fileID: 8240771577111848497}
+  amountText: {fileID: 8528426550734742267}
+  button: {fileID: 5590051345547943317}
+  index: 0
 --- !u!1 &5549385660978693604
 GameObject:
   m_ObjectHideFlags: 0
