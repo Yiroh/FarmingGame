@@ -71,6 +71,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 021467c8dbe520b47bec2a20205d7621, type: 3}
       insertIndex: -1
       addedObject: {fileID: 8277237726168990182}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 021467c8dbe520b47bec2a20205d7621, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6862828138535367578}
   m_SourcePrefab: {fileID: 100100000, guid: 021467c8dbe520b47bec2a20205d7621, type: 3}
 --- !u!1 &8987733653175279137 stripped
 GameObject:
@@ -94,3 +97,16 @@ MonoBehaviour:
   maxConcurrentBees: 2
   currentBees: 0
   totalBeeVisits: 0
+--- !u!114 &6862828138535367578
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8987733653175279137}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 92e02714e325ad045a7d7982509807d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ItemObject
+  referenceItem: {fileID: 11400000, guid: c55736bf59a68c940a860e24538a4f62, type: 2}

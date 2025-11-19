@@ -139,6 +139,8 @@ public class GridSystem : MonoBehaviour
         var action = PlayerController.Instance.currentAction;
         placePrefab = PlayerController.Instance.SelectedPrefab;
 
+        // TODO: When none of placePrefab in inventory, hide ghost.
+
         // No ghost if no highlight yet
         if (highlightInstance == null)
         {
@@ -312,29 +314,34 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
-        // If the item you selected isn't placeable
         if (placePrefab == null)
         {
             Debug.Log("No placeable prefab selected.");
             return;
         }
 
-        // Consume from inventory
-        int slot = Inventory.Instance.slots.FindIndex(s => s.prefab == placePrefab);
-        if (slot >= 0)
+        // Check inventory before placing
+        var itemObject = placePrefab.GetComponent<ItemObject>();
+        if (itemObject != null)
         {
-            Inventory.Instance.ConsumeItem(slot);
+            InventoryItem inventoryItem = InventorySystem.current.Get(itemObject.referenceItem);
+            if (inventoryItem == null || inventoryItem.stackSize <= 0)
+            {
+                Debug.Log("Cannot place: none left in inventory.");
+                return;
+            }
         }
-        else
-        {
-            Debug.LogWarning("Tried to place an item that is not in the inventory: " + placePrefab.name);
-        }
 
-
-
+        // Passed all checks → actually place object
         Vector3 pos = GridToWorld(cell);
         Quaternion rot = Quaternion.Euler(0f, currentRotationY, 0f);
         GameObject obj = Instantiate(placePrefab, pos, rot);
+
+        // Consume one from inventory if applicable
+        if (itemObject != null)
+        {
+            InventorySystem.current.Remove(itemObject.referenceItem);
+        }
 
         if (!grid.ContainsKey(cell))
             grid[cell] = new GridCell();
@@ -342,11 +349,9 @@ public class GridSystem : MonoBehaviour
         grid[cell].occupied = true;
         grid[cell].objectOnCell = obj;
 
-        // Enable scripts now that object is actually placed
         SetActiveComponents(obj, true);
-        // If it's a flower, register it now
-        Flower flowerComp = obj.GetComponent<Flower>();
-        if (flowerComp != null)
+
+        if (obj.TryGetComponent<Flower>(out var flowerComp))
         {
             FlowerManager.Instance.allFlowers.Add(flowerComp);
         }
@@ -369,12 +374,20 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
-        if (grid[cell].objectOnCell.TryGetComponent<Flower>(out var flower))
+        GameObject obj = grid[cell].objectOnCell;
+
+        // Add back to inventory if prefab has ItemObject
+        ItemObject itemObj = obj.GetComponent<ItemObject>();
+        if (itemObj != null)
         {
-            FlowerManager.Instance.allFlowers.Remove(flower);
+            InventorySystem.current.Add(itemObj.referenceItem);
         }
 
-        Destroy(grid[cell].objectOnCell);
+        // Remove flower object from its List
+        if (obj.TryGetComponent<Flower>(out var flower))
+            FlowerManager.Instance.allFlowers.Remove(flower);
+
+        Destroy(obj);
         grid[cell].occupied = false;
         grid[cell].objectOnCell = null;
 
@@ -427,9 +440,20 @@ public class GridSystem : MonoBehaviour
             return;
         }
 
-        Debug.Log($"Harvested {grid[cell].objectOnCell.name}");
-        Destroy(grid[cell].objectOnCell);
+        GameObject obj = grid[cell].objectOnCell;
 
+        // Add harvested item to inventory if prefab has ItemObject
+        ItemObject itemObj = obj.GetComponent<ItemObject>();
+        if (itemObj != null)
+        {
+            InventorySystem.current.Add(itemObj.referenceItem);
+            Debug.Log($"Harvested {itemObj.referenceItem.displayName}");
+        }
+
+        if (obj.TryGetComponent<Flower>(out var flower))
+            FlowerManager.Instance.allFlowers.Remove(flower);
+
+        Destroy(obj);
         grid[cell].occupied = false;
         grid[cell].objectOnCell = null;
 
