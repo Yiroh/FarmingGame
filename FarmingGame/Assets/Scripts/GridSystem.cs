@@ -139,7 +139,24 @@ public class GridSystem : MonoBehaviour
         var action = PlayerController.Instance.currentAction;
         placePrefab = PlayerController.Instance.SelectedPrefab;
 
-        // TODO: When none of placePrefab in inventory, hide ghost.
+        // Disable ghost if you have none left in inventory
+        if (placePrefab != null)
+        {
+            ItemObject itemObj = placePrefab.GetComponent<ItemObject>();
+            if (itemObj != null)
+            {
+                InventoryItem invItem = InventorySystem.current.Get(itemObj.referenceItem);
+
+                if (invItem == null || invItem.stackSize <= 0)
+                {
+                    // Hide existing ghost
+                    if (ghostInstance != null)
+                        ghostInstance.SetActive(false);
+
+                    return; // Do NOT show ghost
+                }
+            }
+        }
 
         // No ghost if no highlight yet
         if (highlightInstance == null)
@@ -321,27 +338,23 @@ public class GridSystem : MonoBehaviour
         }
 
         // Check inventory before placing
-        var itemObject = placePrefab.GetComponent<ItemObject>();
+        ItemObject itemObject = placePrefab.GetComponent<ItemObject>();
+        InventoryItem invItem = null;
+
         if (itemObject != null)
         {
-            InventoryItem inventoryItem = InventorySystem.current.Get(itemObject.referenceItem);
-            if (inventoryItem == null || inventoryItem.stackSize <= 0)
+            invItem = InventorySystem.current.Get(itemObject.referenceItem);
+            if (invItem == null || invItem.stackSize <= 0)
             {
-                Debug.Log("Cannot place: none left in inventory.");
-                return;
+                Debug.Log("No items left to place.");
+                return; // Not allowed to place
             }
         }
 
-        // Passed all checks → actually place object
+        // Passed all checks, now actually place object
         Vector3 pos = GridToWorld(cell);
         Quaternion rot = Quaternion.Euler(0f, currentRotationY, 0f);
         GameObject obj = Instantiate(placePrefab, pos, rot);
-
-        // Consume one from inventory if applicable
-        if (itemObject != null)
-        {
-            InventorySystem.current.Remove(itemObject.referenceItem);
-        }
 
         if (!grid.ContainsKey(cell))
             grid[cell] = new GridCell();
@@ -357,6 +370,28 @@ public class GridSystem : MonoBehaviour
         }
 
         Debug.Log($"Placed object at {cell}");
+
+        // Remove one from inventory after placing
+        if (itemObject != null)
+        {
+            InventorySystem.current.Remove(itemObject.referenceItem);
+
+            // refresh after removal
+            invItem = InventorySystem.current.Get(itemObject.referenceItem);
+
+            // if this was the last item, exit build mode
+            if (invItem == null || invItem.stackSize <= 0)
+            {
+                Debug.Log("Used last item, now exiting build mode.");
+
+                PlayerController.Instance.currentAction = GridAction.None;
+                PlayerController.Instance.SelectPrefab(null);
+
+                if (ghostInstance != null)
+                    ghostInstance.SetActive(false);
+            }
+        }
+
         SaveGrid();
     }
 
