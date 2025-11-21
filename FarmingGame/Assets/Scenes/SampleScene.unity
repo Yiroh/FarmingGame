@@ -2378,6 +2378,7 @@ GameObject:
   - component: {fileID: 1823944848}
   - component: {fileID: 1823944847}
   - component: {fileID: 1823944850}
+  - component: {fileID: 1823944851}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -2458,6 +2459,19 @@ MonoBehaviour:
     amount: 10
   - itemData: {fileID: 11400000, guid: c55736bf59a68c940a860e24538a4f62, type: 2}
     amount: 5
+--- !u!114 &1823944851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1823944846}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f39ec19ca2613e747ac9d4d87bf102de, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GridSaveManager
+  fileName: gridSave.json
 --- !u!1 &1827351679
 GameObject:
   m_ObjectHideFlags: 0

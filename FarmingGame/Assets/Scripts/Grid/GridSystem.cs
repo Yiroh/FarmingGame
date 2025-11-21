@@ -39,7 +39,7 @@ public class GridSystem : MonoBehaviour
     private float currentRotationY = 0f;
 
     // Dictionary-based unlimited grid
-    private Dictionary<Vector2Int, GridCell> grid = new Dictionary<Vector2Int, GridCell>();
+    public Dictionary<Vector2Int, GridCell> grid = new Dictionary<Vector2Int, GridCell>();
     public List<GameObject> allPlaceableItems; // Assign in inspectator
 
     [Header("Save/Load Settings")]
@@ -519,90 +519,18 @@ public class GridSystem : MonoBehaviour
 
     #region Save & Load
 
-    [System.Serializable]
-    private class GridCellData
-    {
-        public int x;
-        public int y;
-        public string prefabName;
-        public float rotY;
-        
-    }
-
-    [System.Serializable]
-    private class GridSaveData
-    {
-        public List<GridCellData> cells = new List<GridCellData>();
-    }
-    //TODO: MAKE IT SO SAME BEES COME FROM SAVED HIVE 
     public void SaveGrid()
     {
-        GridSaveData saveData = new GridSaveData();
-
-        foreach (var kvp in grid)
-        {
-            if (!kvp.Value.occupied) continue;
-
-            GridCellData cellData = new GridCellData
-            {
-                x = kvp.Key.x,
-                y = kvp.Key.y,
-                prefabName = kvp.Value.objectOnCell.name.Replace("(Clone)", ""),
-                rotY = kvp.Value.objectOnCell.transform.eulerAngles.y // <-- NEW
-            };
-            saveData.cells.Add(cellData);
-        }
-
-        string json = JsonUtility.ToJson(saveData, true);
-        File.WriteAllText(Path.Combine(Application.persistentDataPath, saveFileName), json);
-
-        Debug.Log("Grid saved!");
+        GridSaveManager.Instance.Save(this);
     }
 
     public void LoadGrid()
     {
-        string path = Path.Combine(Application.persistentDataPath, saveFileName);
-        if (!File.Exists(path))
-        {
-            Debug.LogWarning("Save file not found.");
-            return;
-        }
-
-        string json = File.ReadAllText(path);
-        GridSaveData saveData = JsonUtility.FromJson<GridSaveData>(json);
-
-        foreach (var cellData in saveData.cells)
-        {
-            Vector2Int cell = new Vector2Int(cellData.x, cellData.y);
-            GameObject prefab = GetPrefabByName(cellData.prefabName);
-            if (prefab == null) continue;
-
-            Vector3 pos = GridToWorld(cell);
-
-            // NEW: apply stored rotation (defaults to 0 if loading old saves)
-            Quaternion rot = Quaternion.Euler(0f, cellData.rotY, 0f);
-
-            GameObject obj = Instantiate(prefab, pos, rot);
-
-            // Flower registration stays the same...
-            Flower flowerComponent = obj.GetComponent<Flower>();
-            if (flowerComponent != null && FlowerManager.Instance != null)
-            {
-                FlowerManager.Instance.allFlowers.Add(flowerComponent);
-            }
-
-            if (!grid.ContainsKey(cell))
-                grid[cell] = new GridCell();
-
-            grid[cell].occupied = true;
-            grid[cell].objectOnCell = obj;
-        }
-
-        Debug.Log("Grid loaded!");
+        GridSaveManager.Instance.Load(this);
     }
 
 
-    private GameObject GetPrefabByName(string name)
+    public GameObject GetPrefabByName(string name)
     {
         foreach (var prefab in allPlaceableItems)
         {
@@ -618,10 +546,7 @@ public class GridSystem : MonoBehaviour
 
     #region Building Selection API
 
-    /// <summary>
-    /// Called by your future building/radial UI to change which building is being placed.
-    /// For example: gridSystem.SetPlacePrefab(beehivePrefab);
-    /// </summary>
+    // Called by inventory UI to change which building is being placed.
     public void SetPlacePrefab(GameObject newPrefab)
     {
         placePrefab = newPrefab;
