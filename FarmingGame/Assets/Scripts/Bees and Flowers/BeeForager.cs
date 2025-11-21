@@ -23,6 +23,7 @@ public class BeeForager : MonoBehaviour
     public float rotationSpeed = 6f;
     public float hoverAmplitude = 0.1f;
     public float hoverFrequency = 6f;
+    public float modelRotationOffset = 180f; // Bee was rotated 180* wrong
 
     [Header("Pollination Settings")]
     public float pollinationDuration = 3f;
@@ -92,7 +93,8 @@ public class BeeForager : MonoBehaviour
             // Smooth rotation toward movement direction
             if (dir != Vector3.zero)
             {
-                Quaternion targetRot = Quaternion.LookRotation(dir);
+                Quaternion targetRot =
+                    Quaternion.LookRotation(dir) * Quaternion.Euler(0f, modelRotationOffset, 0f);
                 transform.rotation = Quaternion.Slerp(
                     transform.rotation,
                     targetRot,

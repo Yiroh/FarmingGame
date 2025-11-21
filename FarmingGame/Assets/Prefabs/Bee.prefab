@@ -22,15 +22,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 90409c685af6f8b4b8ce16e1142df79e, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0.81161
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 90409c685af6f8b4b8ce16e1142df79e, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.5
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 90409c685af6f8b4b8ce16e1142df79e, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0.72031
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 90409c685af6f8b4b8ce16e1142df79e, type: 3}
       propertyPath: m_LocalRotation.w
@@ -90,6 +90,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BeeForager
   state: 0
+  beeName: Worker Bee
+  personality: 0
   homeHive: {fileID: 0}
   flowerTarget: {fileID: 0}
   flightSpeed: 2
@@ -97,7 +99,6 @@ MonoBehaviour:
   hoverAmplitude: 0.1
   hoverFrequency: 4
   pollinationDuration: 3
-  personality: 0
   flightSpeedMultiplier: 1
   pollinationDurationMultiplier: 1
   pollenYieldMultiplier: 1
