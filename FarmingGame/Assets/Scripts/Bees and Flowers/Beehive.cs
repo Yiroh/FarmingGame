@@ -220,4 +220,95 @@ public class Beehive : MonoBehaviour
             bee.SetFlower(closestFlower.transform);
         }
     }
+    public HiveSaveData CreateSaveData()
+    {
+        HiveSaveData data = new HiveSaveData();
+
+        data.hiveName = hiveName;
+        data.hiveType = hiveType;
+        data.hiveHealth = hiveHealth;
+        data.hasQueen = hasQueen;
+        data.queenAgeDays = queenAgeDays;
+        data.queenProductivity = queenProductivity;
+
+        data.workerBees = workerBees;
+        data.droneBees = droneBees;
+        data.broodBees = broodBees;
+
+        data.storedHoney = storedHoney;
+        data.storedPollen = storedPollen;
+        data.storedWax = storedWax;
+        data.storedPropolis = storedPropolis;
+
+        // Save roster
+        if (workerBeeRoster != null && workerBeeRoster.Length > 0)
+        {
+            data.workerRoster = new HiveBeeSaveData[workerBeeRoster.Length];
+            for (int i = 0; i < workerBeeRoster.Length; i++)
+            {
+                data.workerRoster[i] = new HiveBeeSaveData();
+                data.workerRoster[i].beeName = workerBeeRoster[i].name;
+                data.workerRoster[i].beePrefabName =
+                    workerBeeRoster[i].prefab != null ? workerBeeRoster[i].prefab.name : null;
+            }
+        }
+
+        return data;
+    }
+
+public void LoadFromSave(HiveSaveData data)
+    {
+        if (data == null) return;
+
+        hiveName = data.hiveName;
+        hiveType = data.hiveType;
+        hiveHealth = data.hiveHealth;
+        hasQueen = data.hasQueen;
+        queenAgeDays = data.queenAgeDays;
+        queenProductivity = data.queenProductivity;
+
+        workerBees = data.workerBees;
+        droneBees = data.droneBees;
+        broodBees = data.broodBees;
+
+        storedHoney = data.storedHoney;
+        storedPollen = data.storedPollen;
+        storedWax = data.storedWax;
+        storedPropolis = data.storedPropolis;
+
+        // Rebuild roster from saved data
+        if (data.workerRoster != null && data.workerRoster.Length > 0)
+        {
+            workerBeeRoster = new HiveBee[data.workerRoster.Length];
+
+            for (int i = 0; i < workerBeeRoster.Length; i++)
+            {
+                workerBeeRoster[i].name = data.workerRoster[i].beeName;
+
+                // Match prefab by name inside this hive's beePrefabsPool
+                GameObject prefab = null;
+                string prefabName = data.workerRoster[i].beePrefabName;
+
+                if (!string.IsNullOrEmpty(prefabName) && beePrefabsPool != null)
+                {
+                    for (int p = 0; p < beePrefabsPool.Length; p++)
+                    {
+                        if (beePrefabsPool[p] != null &&
+                            beePrefabsPool[p].name == prefabName)
+                        {
+                            prefab = beePrefabsPool[p];
+                            break;
+                        }
+                    }
+                }
+
+                workerBeeRoster[i].prefab = prefab;
+            }
+        }
+        else
+        {
+            // No roster saved? fall back to generating one.
+            InitializeWorkerRoster();
+        }
+    }
 }

@@ -13,17 +13,8 @@ public class GridSaveManager : MonoBehaviour
         Instance = this;
     }
 
-    // ---------------- SAVE ----------------
     public void Save(GridSystem gridSystem)
     {
-        // TODO: MAKE IT SO SAME BEES COME FROM SAVED HIVE
-
-        // TODO: Save Inventory
-
-        // TODO: Save player position
-
-        // TODO: Possibly add multiple save slots (Further down the line feature really)
-
         GridSaveData saveData = new GridSaveData();
 
         foreach (var kvp in gridSystem.grid)
@@ -38,16 +29,20 @@ public class GridSaveManager : MonoBehaviour
                 rotY = kvp.Value.objectOnCell.transform.eulerAngles.y
             };
 
+            // --- NEW: save hive data if this cell has a hive ---
+            Beehive hive = kvp.Value.objectOnCell.GetComponent<Beehive>();
+            if (hive != null)
+            {
+                cell.hiveData = hive.CreateSaveData();
+            }
+
             saveData.cells.Add(cell);
         }
 
         string json = JsonUtility.ToJson(saveData, true);
         File.WriteAllText(FullPath, json);
-
         Debug.Log("Grid saved!");
     }
-
-    // ---------------- LOAD ----------------
     public void Load(GridSystem gridSystem)
     {
         if (!File.Exists(FullPath))
@@ -75,11 +70,17 @@ public class GridSaveManager : MonoBehaviour
 
             GameObject obj = Instantiate(prefab, pos, rot);
 
-            // Register flowers
+            // Restore hive data if this is a hive
+            Beehive hive = obj.GetComponent<Beehive>();
+            if (hive != null && cell.hiveData != null)
+            {
+                hive.LoadFromSave(cell.hiveData);
+            }
+
+            // Existing flower code
             if (obj.TryGetComponent(out Flower flower))
                 FlowerManager.Instance.allFlowers.Add(flower);
 
-            // Create cell in dictionary
             gridSystem.grid[key] = new GridCell
             {
                 occupied = true,
@@ -89,4 +90,6 @@ public class GridSaveManager : MonoBehaviour
 
         Debug.Log("Grid loaded!");
     }
+
+
 }
